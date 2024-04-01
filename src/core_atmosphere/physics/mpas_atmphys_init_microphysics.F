@@ -90,7 +90,7 @@
 
  do k = 1, nVertLevels
     do iCell = 1, nCellsSolve
-       scalars(index_nc,k,iCell) = 0.1 * scalars(index_nwfa,k,iCell)
+       scalars(index_nc,k,iCell) = max(10.e6, min(500.e6, (0.1 * scalars(index_nwfa,k,iCell))))
     enddo
  enddo
 
