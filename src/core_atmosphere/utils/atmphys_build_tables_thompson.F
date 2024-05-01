@@ -8,6 +8,7 @@
 !=================================================================================================================
  module atmphys_build_tables_thompson
  use module_mp_thompson
+ use module_mp_thompson_utils
  use module_mp_thompson_params, only : NRHG
 
  implicit none

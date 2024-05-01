@@ -270,7 +270,8 @@
 
 !local pointer:
  character(len=StrKIND),pointer:: microp_scheme
-
+ integer,pointer:: thompson_aerosol_aware,thompson_hail_aware
+ 
 !CCPP-compliant flags:
  character(len=StrKIND):: errmsg
  integer:: errflg
@@ -282,11 +283,13 @@
  errflg = 0
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
-
+ call mpas_pool_get_config(configs,'config_thompson_aerosol_aware',thompson_aerosol_aware)
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ 
   microp_select: select case(microp_scheme)
 
      case("mp_thompson")
-        call thompson_init(l_mp_tables)
+        call thompson_init(l_mp_tables, thompson_aerosol_aware, thompson_hail_aware)
         call init_thompson_clouddroplets_forMPAS(mesh,sfc_input,diag_physics,state)
 
      case("mp_wsm6")
