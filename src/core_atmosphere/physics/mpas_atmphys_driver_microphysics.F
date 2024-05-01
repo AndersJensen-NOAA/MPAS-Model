@@ -321,7 +321,8 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
-
+ integer,pointer:: thompson_aerosol_aware,thompson_hail_aware
+ 
 !local variables and arrays:
  integer:: istep
 
@@ -338,7 +339,9 @@
  errflg = 0
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
-
+ call mpas_pool_get_config(configs,'config_thompson_aerosol_aware',thompson_aerosol_aware)
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ 
 !... allocation of microphysics arrays:
 !$OMP MASTER
  call allocate_microphysics(configs)
@@ -374,7 +377,9 @@
        istep = 1
        call mpas_timer_start('Thompson')
        do while (istep .le. n_microp)
-       call mp_gt_driver( &
+
+       if (thompson_aerosol_aware) then
+          call thompson_3d_to_1d_driver( &
                   th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                   qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                   qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
@@ -390,7 +395,26 @@
                   ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                   ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                   its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
-                           )
+                  )
+       else
+          call thompson_3d_to_1d_driver( &
+                  th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                  qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                  qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+!!!                  nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                  pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                  w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                  rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                  snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                  sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                  re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                  has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                  ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                  its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                  )
+       endif
        istep = istep + 1
        enddo
        call mpas_timer_stop('Thompson')
