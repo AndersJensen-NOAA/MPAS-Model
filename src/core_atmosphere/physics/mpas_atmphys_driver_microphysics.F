@@ -255,7 +255,7 @@
  end subroutine deallocate_microphysics
 
 !=================================================================================================================
- subroutine microphysics_init(dminfo,configs,mesh,sfc_input,diag_physics,state)
+ subroutine microphysics_init(dminfo,configs,mesh,sfc_input,diag,diag_physics,state)
 !=================================================================================================================
 
 !input arguments:
@@ -267,6 +267,7 @@
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
  type(mpas_pool_type),intent(inout):: state
+ type(mpas_pool_type),intent(in):: diag
 
 !local pointer:
  character(len=StrKIND),pointer:: microp_scheme
@@ -290,7 +291,7 @@
 
      case("mp_thompson")
         call thompson_init(l_mp_tables, thompson_hail_aware, thompson_aerosol_aware)
-        call init_thompson_clouddroplets_forMPAS(mesh,sfc_input,diag_physics,state)
+        call init_thompson_clouddroplets_forMPAS(mesh,sfc_input,diag,diag_physics,state,configs)
 
      case("mp_wsm6")
         call mp_wsm6_init(den0=rho_a,denr=rho_r,dens=rho_s,cl=cliq,cpv=cpv, &
