@@ -37,6 +37,7 @@
 !-----------------------------------------------------------------------------------------------------------------
 !--- partial initialization before building the look-up tables:
 !--- AAJ This needs a hail_aware_flag defined in module_mp_thompson_params
+
  call thompson_init(l_mp_tables=l_mp_tables, hail_aware_flag=build_hail_aware_table)
 
  call mpas_new_unit(mp_unit, unformatted = .true.)
