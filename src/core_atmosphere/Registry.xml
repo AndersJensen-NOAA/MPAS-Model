@@ -1570,7 +1570,11 @@
                         <var name="nr" array_group="number" units="nb kg^{-1}"
                              description="Rain number concentration"
                              packages="mp_thompson_in;mp_nssl2m_in"/>
-                        
+
+			<var name="qaprog" array_group="passive" units=""
+                             description="Prognostic cloud fraction"
+                             packages="mp_thompson_in"/>
+						
                         <var name="nwfa" array_group="passive" units="nb kg^{-1}"
                              description="Number of water-friendly aerosols for microphysics"
                              packages="mp_thompson_in"/>
@@ -1951,6 +1955,10 @@
                              description="Tendency of rain number concentration multiplied by dry air density divided by d(zeta)/dz"
                              packages="mp_thompson_in;mp_nssl2m_in"/>
 
+			<var name="tend_qaprog" name_in_code="qaprog" array_group="passive" units="s^{-1}" 
+                             description="Tendency of prognostic cloud fraction multiplied by dry air density divided by d(zeta)/dz"
+                             packages="mp_thompson_in"/>
+						
                         <var name="tend_nwfa" name_in_code="nwfa" array_group="passive" units="nb m^{-3} s^{-1}" 
                              description="Tendency of water-friendly aerosols multiplied by dry air density divided by d(zeta)/dz"
                              packages="mp_thompson_in"/>
@@ -2077,6 +2085,9 @@
                         <var name="lbc_volh" name_in_code="volh" array_group="volume" packages="mp_nssl2m_in" units="m^{3} s^{-1}"
                              description="Lateral boundary tendency of hail particle volume"/>
 
+			<var name="lbc_qaprog" name_in_code="qaprog" array_group="passive" packages="mp_thompson_in" units="s^{-1}"
+                             description="Lateral boundary tendency of Prognostic cloud fraction"/>
+			
                         <var name="lbc_nwfa" name_in_code="nwfa" array_group="passive" packages="mp_thompson_in" units="m^{-3} s^{-1}"
                              description="Lateral boundary tendency of wfa"/>
 
