@@ -1415,7 +1415,7 @@ module init_atm_cases
 
       real (kind=RKIND), dimension(nVertLevels, nCells) :: relhum, thi, tbi, cqwb
 
-      real (kind=RKIND) ::  xnutr
+      real (kind=RKIND) ::  xnutr, randnum
       real (kind=RKIND) ::  ztemp, zd, zt, dz, str
 
       real (kind=RKIND), dimension(nVertLevels ) :: qvb
@@ -1549,7 +1549,8 @@ module init_atm_cases
       call atm_initialize_deformation_weights(mesh, nCells, on_a_sphere, sphere_radius)
 
       xnutr = 0.
-      zd = 12000.
+! AAJ      zd = 12000.
+      zd = 4000.
 
       p0 = 1.e+05
       rcp = rgas/cp
@@ -1569,7 +1570,8 @@ module init_atm_cases
       !     metrics for hybrid coordinate and vertical stretching
 
       str = 1.0
-      zt = 20000.
+! AAJ      zt = 20000.
+      zt = 5000.
       dz = zt/float(nz1)
 
 !      write(0,*) ' dz = ',dz
@@ -1687,7 +1689,8 @@ module init_atm_cases
          zts = 2500.
       else if (test_case == 5) then !supercell parameters
          um = 30.
-         us = 15.
+!AAJ         us = 15.
+         us = 10.
          zts = 5000.
       end if
 
@@ -1702,6 +1705,25 @@ module init_atm_cases
                   relhum(k,i) = (1.-0.75*(ztemp/ztr)**1.25)
                   if(t(k,i).lt.thetas) t(k,i) = thetas
                end if
+
+               ! AAJ
+               if (ztemp < 400.) then
+                  t(k,i) = 290.
+                  relhum(k,i) = (ztemp+1600)/2000.
+               else
+                  t(k,i) = (ztemp + 71201.) / 246.
+                  relhum(k,i) = 1. + (2.5*ztemp/400.)/100.
+
+                  call random_number(randnum)
+                  randnum = 0.1*(randnum*2.0 - 1.0)
+                  t(k,i) = t(k,i) + randnum
+                   
+               endif
+               if (ztemp > 795.) then
+                  t(k,i) = 297. + 0.25*ztemp/795.
+                  relhum(k,i) = 0.4
+               endif
+
                tb(k,i) = t(k,i)
                thi(k,i) = t(k,i)
                tbi(k,i) = t(k,i)
@@ -1726,8 +1748,13 @@ module init_atm_cases
                else
                   u(k,i) = um
                end if
+               ! AAJ
+               u(k,i) = sqrt( (3+4.3*ztemp/1000.)**2 + (-9+5.6*ztemp/1000.)**2 )
+               
                if(i == 1 ) u_init(k) = u(k,i) - us
                u(k,i) = cos(angleEdge(i)) * (u(k,i) - us)
+               ! AAJ
+               ! u(k,i) = 0.0
             end do
             end if
          end do
@@ -1850,9 +1877,9 @@ module init_atm_cases
         do k = 1,nz1
           ztemp     = .5*(zgrid(k+1,i)+zgrid(k,i))
           rad =sqrt((xloc/radx)**2+(yloc/radx)**2+((ztemp-zcent)/radz)**2)
-          if(rad.lt.1)  then
-            thi(k,i) = thi(k,i) + delt*cos(.5*pii*rad)**2
-          end if
+!AAJ          if(rad.lt.1)  then
+!AAJ            thi(k,i) = thi(k,i) + delt*cos(.5*pii*rad)**2
+!AAJ          end if
            t (k,i) = thi(k,i)*(1.+1.61*scalars(index_qv,k,i))
         end do
       end do
