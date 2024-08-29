@@ -470,7 +470,7 @@
  end subroutine MPAS_to_physics
 
 !=================================================================================================================
- subroutine microphysics_from_MPAS(configs,mesh,state,time_lev,diag,diag_physics,its,ite)
+ subroutine microphysics_from_MPAS(configs,mesh,state,time_lev,diag,diag_physics,tend_physics,its,ite)
 !=================================================================================================================
 
 !input variables:
@@ -479,6 +479,7 @@
  type(mpas_pool_type),intent(in):: state
  type(mpas_pool_type),intent(in):: diag
  type(mpas_pool_type),intent(in):: diag_physics
+ type(mpas_pool_type),intent(in):: tend_physics
 
  integer,intent(in):: its,ite
  integer:: time_lev
@@ -486,6 +487,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
+ logical,pointer:: thompson_hail_aware, sgs_clouds
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg,index_qh
  integer,pointer:: index_zrw,index_zgw,index_zhw
  integer,pointer:: index_nwfa,index_nifa,index_qaprog
@@ -501,7 +503,8 @@
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
-
+ real(kind=RKIND),dimension(:,:),pointer:: rthratenlw
+ 
 !local variables:
  integer:: i,k,j
 
@@ -509,6 +512,8 @@
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ call mpas_pool_get_config(configs,'config_sgs_clouds',sgs_clouds)
 
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
@@ -555,7 +560,7 @@
  call mpas_pool_get_dimension(state,'index_zgw'  ,index_zgw  )
  call mpas_pool_get_dimension(state,'index_zhw'  ,index_zhw  )
 
-
+ call mpas_pool_get_array(tend_physics,'rthratenlw',rthratenlw)
 
  call mpas_pool_get_array(state,'scalars',scalars,time_lev)
  qv   => scalars(index_qv,:,:)
@@ -613,7 +618,14 @@
           nr   => scalars(index_nr,:,:)
           nwfa   => scalars(index_nwfa,:,:)
           nifa   => scalars(index_nifa,:,:)
-          qaprog   => scalars(index_qaprog,:,:)
+          if (sgs_clouds) then
+             qaprog   => scalars(index_qaprog,:,:)
+          endif
+          
+          if (thompson_hail_aware) then
+             ng   => scalars(index_ng,:,:)
+             volg => scalars(index_volg,:,:)
+          endif
 
           do j = jts,jte
           do i = its,ite
@@ -629,11 +641,18 @@
              nc_p(i,k,j) = nc(k,i)
              nr_p(i,k,j) = nr(k,i)
              nwfa_p(i,k,j) = nwfa(k,i)
-             qaprog_p(i,k,j) = qaprog(k,i)
+             if(sgs_clouds) then
+                qaprog_p(i,k,j) = qaprog(k,i)
+                rthraten_p(i,k,j) = rthratenlw(k,i)
+             endif
              nifa_p(i,k,j) = nifa(k,i)
              rainprod_p(i,k,j) = rainprod(k,i)
              evapprod_p(i,k,j) = evapprod(k,i)
              refl10cm_p(i,k,j) = refl10cm(k,i)
+             if (thompson_hail_aware) then
+                volg_p(i,k,j) = volg(k,i)
+                ng_p(i,k,j) = ng(k,i)
+             endif
           enddo
           enddo
           enddo
@@ -716,6 +735,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
+ logical,pointer:: thompson_hail_aware, sgs_clouds
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg,index_qh
  integer,pointer:: index_zrw,index_zgw,index_zhw
  integer,pointer:: index_ni,index_nc,index_nr,index_ns,index_ng,index_nh,index_nccn
@@ -742,6 +762,8 @@
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ call mpas_pool_get_config(configs,'config_sgs_clouds',sgs_clouds)
 
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
@@ -880,7 +902,13 @@
           nr   => scalars(index_nr,:,:)
           nwfa   => scalars(index_nwfa,:,:)
           nifa   => scalars(index_nifa,:,:)
-          qaprog   => scalars(index_qaprog,:,:)
+          if (sgs_clouds) then
+             qaprog   => scalars(index_qaprog,:,:)
+          endif
+          if (thompson_hail_aware) then
+             ng   => scalars(index_ng,:,:)
+             volg => scalars(index_volg,:,:)
+          endif
 
           do j = jts, jte
           do k = kts, kte
@@ -889,8 +917,14 @@
              nc(k,i) = nc_p(i,k,j)
              nr(k,i) = nr_p(i,k,j)
              nwfa(k,i) = nwfa_p(i,k,j)
-             qaprog(k,i) = qaprog_p(i,k,j)
+             if (sgs_clouds) then
+                qaprog(k,i) = qaprog_p(i,k,j)
+             endif
              nifa(k,i) = nifa_p(i,k,j)
+             if (thompson_hail_aware) then
+                ng(k,i) = ng_p(i,k,j)
+                volg(k,i) = volg_p(i,k,j)
+             endif
              rainprod(k,i) = rainprod_p(i,k,j)
              evapprod(k,i) = evapprod_p(i,k,j)
              refl10cm(k,i) = refl10cm_p(i,k,j)

@@ -167,7 +167,7 @@ module init_atm_cases
             call mpas_pool_get_subpool(block_ptr % structs, 'diag', diag)
 
             call mpas_log_write(' calling test case setup ')
-            call init_atm_case_mtn_wave(mesh, nCells, nVertLevels, state, diag, block_ptr % configs)
+            call init_atm_case_mtn_wave(domain % dminfo, mesh, nCells, nVertLevels, state, diag, block_ptr % configs)
             call decouple_variables(mesh, nCells, nVertLevels, state, diag)
             call mpas_log_write(' returned from test case setup ')
             block_ptr => block_ptr % next
@@ -1408,14 +1408,15 @@ module init_atm_cases
 
       integer :: iCell, iCell1, iCell2 , iEdge, ivtx, i, k, nz, nz1, itr, cell1, cell2
       integer, pointer :: nEdges, nVertices, maxEdges, nCellsSolve
-      integer, pointer :: index_qv
+      integer, pointer :: index_qv, index_qc
 
       real (kind=RKIND), dimension(nVertLevels + 1 ) :: zc, zw, ah
       real (kind=RKIND), dimension(nVertLevels ) :: zu, dzw, rdzwp, rdzwm
 
-      real (kind=RKIND), dimension(nVertLevels, nCells) :: relhum, thi, tbi, cqwb
+      real (kind=RKIND), dimension(nVertLevels, nCells) :: relhum, thi, tbi, cqwb, qc1, qv1, thetad
+      real (kind=RKIND), dimension(nVertLevels, nCells) :: thetal, pressure_tmp, qt, tempk, tempc, es1, rs1
 
-      real (kind=RKIND) ::  xnutr
+      real (kind=RKIND) ::  xnutr, randnum, zi
       real (kind=RKIND) ::  ztemp, zd, zt, dz, str
 
       real (kind=RKIND), dimension(nVertLevels ) :: qvb
@@ -1542,6 +1543,7 @@ module init_atm_cases
       call mpas_pool_get_array(state, 'scalars', scalars)
 
       call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+      call mpas_pool_get_dimension(state, 'index_qc', index_qc)
 
       scalars(:,:,:) = 0.
 
@@ -1549,7 +1551,8 @@ module init_atm_cases
       call atm_initialize_deformation_weights(mesh, nCells, on_a_sphere, sphere_radius)
 
       xnutr = 0.
-      zd = 12000.
+! AAJ      zd = 12000.
+      zd = 3000.
 
       p0 = 1.e+05
       rcp = rgas/cp
@@ -1569,7 +1572,9 @@ module init_atm_cases
       !     metrics for hybrid coordinate and vertical stretching
 
       str = 1.0
-      zt = 20000.
+! AAJ      zt = 20000.
+      zi = 840.
+      zt = 4000.
       dz = zt/float(nz1)
 
 !      write(0,*) ' dz = ',dz
@@ -1687,7 +1692,9 @@ module init_atm_cases
          zts = 2500.
       else if (test_case == 5) then !supercell parameters
          um = 30.
-         us = 15.
+!AAJ         us = 15.
+         ! us = 10.
+         us = 0.
          zts = 5000.
       end if
 
@@ -1702,6 +1709,91 @@ module init_atm_cases
                   relhum(k,i) = (1.-0.75*(ztemp/ztr)**1.25)
                   if(t(k,i).lt.thetas) t(k,i) = thetas
                end if
+
+               ! AAJ
+               if (ztemp <= zi) then
+                  thetal(k,i) = 289.0
+                  qt(k,i) = 9.0
+               else
+                  thetal(k,i) = 297.5 + (ztemp-zi)**0.333333
+                  qt(k,i) = 1.5
+               endif
+
+               pressure_tmp(k,i) = 1017.8*100. * exp(-ztemp / 8250.84)
+               ! pressure_tmp(k,i) = 1017.8*100. * exp(-ztemp / 7000.)
+               thetad(k,i) = thetal(k,i)
+               tempk(k,i) = thetad(k,i) / ((100000./pressure_tmp(k,i))**0.286)
+
+               ! tempk(k,i) = thetal(k,i) - 9.8*ztemp/1004.
+               tempc(k,i) = tempk(k,i) - 273.15
+               es1(k,i) = 100.*6.112 * exp(((17.67 * tempc(k,i))/(tempc(k,i) + 243.5)))
+               rs1(k,i) = 0.622*es1(k,i)/(pressure_tmp(k,i)-es1(k,i))
+               relhum(k,i) = qt(k,i) / (1000.*rs1(k,i))
+               
+               ! ITERATE
+               if (relhum(k,i) <= 1.0) then
+                  qc1(k,i) = 0.0
+               else
+                  qc1(k,i) = qt(k,i)/1000. - rs1(k,i)
+               endif
+               qv1(k,i) = qt(k,i)/1000. - qc1(k,i)
+               
+               ! tempk(k,i) = thetal(k,i) - 9.8*ztemp/1004. + 2.5e6*qc1(k,i)/1004.
+!AAJ TEST to reduce theta
+               thetad(k,i) = thetal(k,i) ! + 2.5e6*qc1(k,i)/1004.
+               
+               ! tempk(k,i) = thetad(k,i) / ((100000./pressure_tmp(k,i))**0.286)
+
+               ! tempc(k,i) = tempk(k,i) - 273.15
+               ! es1(k,i) = 100.*6.112 * exp(((17.67 * tempc(k,i))/(tempc(k,i) + 243.5)))
+               ! rs1(k,i) = 0.622*es1(k,i)/(pressure_tmp(k,i)-es1(k,i))
+               ! relhum(k,i) = qt(k,i) / (1000.*rs1(k,i))
+               
+               ! t(k,i) = (tempk(k,i) * (p0/(pressure_tmp(k,i)))**0.286) * (1. + 1.61*qv1(k,i))
+               t(k,i) = thetad(k,i)
+               
+!               thetad(k,i) = thetal(k,i) + 2.5e6/1004.*qc1(k,i)
+!               t(k,i) = thetad(k,i)*(1.0 + 1.61*qv1(k,i))
+
+               !! AAJ t(k,i) = thetal(k,i)
+               call random_number(randnum)
+               randnum = 0.1*(randnum*2.0 - 1.0)
+               t(k,i) = t(k,i) + randnum
+
+               if (qc1(k,i) > 0.) then
+                  ! THIS IS CTRL
+                  scalars(index_qv,k,i) = qt(k,i)/1000. + 0.8*qc1(k,i)
+                  !EXP
+                  ! scalars(index_qv,k,i) = qt(k,i)/1000. ! + 0.8*qc1(k,i)
+                  t(k,i) = t(k,i) + 0.1*2.5e6/1004.*qc1(k,i)
+               else
+                  scalars(index_qv,k,i) = qt(k,i)/1000. !! - qc1(k,i)
+               endif
+               
+!!!               scalars(index_qc,k,i) = qc1(k,i)
+               
+               if (i == 2000) then
+                   write(*,*) k, thetal(k,i), thetad(k,i), qt(k,i), pressure_tmp(k,i), tempk(k,i), tempc(k,i), es1(k,i), rs1(k,i)*1000., relhum(k,i), qc1(k,i), qv1(k,i)
+               endif
+               
+               ! ! AAJ
+               ! if (ztemp < 400.) then
+               !    t(k,i) = 290.
+               !    relhum(k,i) = (ztemp+1600)/2000.
+               ! else
+               !    t(k,i) = (ztemp + 71201.) / 246.
+               !    relhum(k,i) = 1. + (2.5*ztemp/400.)/100.
+
+               !    call random_number(randnum)
+               !    randnum = 0.1*(randnum*2.0 - 1.0)
+               !    t(k,i) = t(k,i) + randnum
+                   
+               ! endif
+               ! if (ztemp > 795.) then
+               !    t(k,i) = 297. + 0.25*ztemp/795.
+               !    relhum(k,i) = 0.4
+               ! endif
+
                tb(k,i) = t(k,i)
                thi(k,i) = t(k,i)
                tbi(k,i) = t(k,i)
@@ -1726,8 +1818,13 @@ module init_atm_cases
                else
                   u(k,i) = um
                end if
+               ! AAJ
+               u(k,i) = sqrt( (3+4.3*ztemp/1000.)**2 + (-9+5.6*ztemp/1000.)**2 )
+               
                if(i == 1 ) u_init(k) = u(k,i) - us
                u(k,i) = cos(angleEdge(i)) * (u(k,i) - us)
+               ! AAJ
+               ! u(k,i) = 0.0
             end do
             end if
          end do
@@ -1741,8 +1838,8 @@ module init_atm_cases
 
      do itr=1,30
 
-      pitop = 1.-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
-      pibtop = 1.-.5*dzw(1)*gravity*(1.+qvb(1))/(cp*tb(1,1)*zz(1,1))
+      pitop = 1.005059-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
+      pibtop = 1.005059-.5*dzw(1)*gravity*(1.+qvb(1))/(cp*tb(1,1)*zz(1,1))
       do k=2,nz1
          pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*.5*(t(k,1)+t(k-1,1))   &
                                    *.5*(zz(k,1)+zz(k-1,1)))
@@ -1753,7 +1850,7 @@ module init_atm_cases
       end do
       pitop = pitop-.5*dzw(nz1)*gravity*(1.+scalars(index_qv,nz1,1))/(cp*t(nz1,1)*zz(nz1,1))
       pibtop = pibtop-.5*dzw(nz1)*gravity*(1.+qvb(nz1))/(cp*tb(nz1,1)*zz(nz1,1))
-
+      
       call mpas_dmpar_bcast_real(dminfo, pitop)
       call mpas_dmpar_bcast_real(dminfo, pibtop)
 
@@ -1781,11 +1878,18 @@ module init_atm_cases
      ! update water vapor mixing ratio from humidity profile
      !
       do i= 1,nCells
+         if (i == 2000) then
+!            do k=1,nz1
+!               write(*,*) 'QV', k, scalars(index_qv,k,i)
+!            enddo
+         endif
+
          do k=1,nz1
             temp     = p(k,i)*thi(k,i)
             pres     = p0*p(k,i)**(1./rcp)
             qvs      = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
-            scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+!            scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+
          end do
       end do
 
@@ -1850,16 +1954,16 @@ module init_atm_cases
         do k = 1,nz1
           ztemp     = .5*(zgrid(k+1,i)+zgrid(k,i))
           rad =sqrt((xloc/radx)**2+(yloc/radx)**2+((ztemp-zcent)/radz)**2)
-          if(rad.lt.1)  then
-            thi(k,i) = thi(k,i) + delt*cos(.5*pii*rad)**2
-          end if
+!AAJ          if(rad.lt.1)  then
+!AAJ            thi(k,i) = thi(k,i) + delt*cos(.5*pii*rad)**2
+!AAJ          end if
            t (k,i) = thi(k,i)*(1.+1.61*scalars(index_qv,k,i))
         end do
-      end do
+     end do
 
       do itr=1,30
 
-        pitop = 1.-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
+        pitop = 1.005059-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
         do k=2,nz1
           pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*.5*(t (k,1)+t (k-1,1)) &
                                                   *.5*(zz(k,1)+zz(k-1,1)))
@@ -1973,6 +2077,9 @@ module init_atm_cases
          do k=1,nVertLevels
             rho(k,iCell) = rho_zz(k,iCell) * zz(k,iCell)
             theta(k,iCell) = t(k,iCell) / (1.0 + 1.61 * scalars(index_qv,k,iCell))
+            if (iCell == 2000) then
+               write(*,*) theta(k,iCell), t(k,iCell), scalars(index_qv,k,iCell), relhum(k,i)
+            endif
          end do
       end do
 
@@ -1982,13 +2089,14 @@ module init_atm_cases
 !----------------------------------------------------------------------------------------------------------
 
 
-   subroutine init_atm_case_mtn_wave(mesh, nCells, nVertLevels, state, diag, configs)
+   subroutine init_atm_case_mtn_wave(dminfo, mesh, nCells, nVertLevels, state, diag, configs)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Setup baroclinic wave test case from Jablonowski and Williamson 2008 (QJRMS)
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       implicit none
 
+      type (dm_info), intent(in) :: dminfo
       type (mpas_pool_type), intent(inout) :: mesh
       integer, intent(in) :: nCells
       integer, intent(in) :: nVertLevels
@@ -1996,7 +2104,8 @@ module init_atm_cases
       type (mpas_pool_type), intent(inout) :: diag
       type (mpas_pool_type), intent(inout) :: configs
 
-      real (kind=RKIND), parameter :: t0=288., hm=250.
+!      real (kind=RKIND), parameter :: t0=288., hm=250.
+      real (kind=RKIND), parameter :: t0=288., hm=1000.
 
       real (kind=RKIND), dimension(:), pointer :: rdzw, dzu, rdzu, fzm, fzp
       real (kind=RKIND), dimension(:,:), pointer :: zgrid, zxu, zz, hx, cqw
@@ -2013,22 +2122,24 @@ module init_atm_cases
       integer, pointer :: nEdges, maxEdges, nCellsSolve, nVertices
       integer, pointer :: index_qv
 
-      real (kind=RKIND) :: ptop, pitop, ptopb, p0, flux, d2fdx2_cell1, d2fdx2_cell2
+      real (kind=RKIND) :: ptop, pibtop, pitop, ptopb, p0, flux, d2fdx2_cell1, d2fdx2_cell2
 
       real (kind=RKIND) :: ztemp, zd, zt, dz, str
 
-      real (kind=RKIND), dimension(nVertLevels, nCells) :: relhum
+      real (kind=RKIND), dimension(nVertLevels, nCells) :: relhum, pressure_tmp
       real (kind=RKIND) :: qvs, xnutr
-
+      real (kind=RKIND), dimension(nVertLevels ) :: qvb
       real (kind=RKIND), dimension(nVertLevels + 1 ) :: zc, zw, ah
       real (kind=RKIND), dimension(nVertLevels ) :: zu, dzw, rdzwp, rdzwm
-
+      real (kind=RKIND), dimension(nVertLevels, nCells) :: tbi, cqwb, thi
+      
       real (kind=RKIND) :: d1, d2, d3, cof1, cof2
       real (kind=RKIND) :: um, vm,rcp, rcv
       real (kind=RKIND) :: temp, pres, a_scale
 
-      real (kind=RKIND) :: xi, xa, xc, xla, zinv, xn2, xn2m, xn2l, z_edge, z_edge3
-
+      real (kind=RKIND) :: xi, xa, xc, xla, zinv, xn2, xn2m, xn2l, z_edge, z_edge3, xc2, xc3, xc4, xc5
+      real (kind=RKIND) :: weight1
+      
       integer, dimension(nCells, 2) :: next_cell
       logical, parameter :: terrain_smooth = .false.
 
@@ -2170,9 +2281,17 @@ module init_atm_cases
       rcv = rgas/(cp-rgas)
 
       ! for hx computation
+      ! xa = 5000. !SHP - should be changed based on grid distance
+!      xa = 10000. !SHP - should be changed based on grid distance
       xa = 5000. !SHP - should be changed based on grid distance
       xla = 4000.
       xc = maxval (xCell(:))/2.
+      xc2 =  0.7 * maxval (xCell(:))
+      xc3 =  0.83 * maxval (xCell(:))
+
+      xc4 =  0.5 * maxval (xCell(:))
+!!      xc5 =  0.63 * maxval (xCell(:))
+      xc5 =  0.61 * maxval (xCell(:))
 
       !     metrics for hybrid coordinate and vertical stretching
       str = 1.0
@@ -2252,11 +2371,42 @@ module init_atm_cases
       do iCell=1,nCells
          xi = xCell(iCell)
          !====1. for pure cosine mountain
-         ! if(abs(xi-xc).ge.2.*xa)  then
-         !    hx(1,iCell) = 0.
-         ! else
-         !    hx(1,iCell) = hm*cos(.5*pii*(xi-xc)/(2.*xa))**2.
-         ! end if
+!!!         write(*,*) 'TERRAIN', iCell, xi, xc, xa, hm
+         hx(1,iCell) = 0.
+         
+!         if(abs(xi-xc).ge.2.*xa)  then
+!            hx(1,iCell) = 0.
+!         else
+!            hx(1,iCell) = hm*cos(.5*pii*(xi-xc)/(2.*xa))**2.
+!         end if
+!
+!         if(abs(xi-xc).lt.2.*xa)  then
+!            hx(1,iCell) = hm*cos(.5*pii*(xi-xc)/(2.*xa))**2.
+!         end if
+
+         if(abs(xi-xc4).lt.2.*xa*1.5)  then
+            hx(1,iCell) = 1000.*cos(.5*pii*(xi-xc4)/(2.*xa*1.5))**2.
+         end if
+         
+         if(abs(xi-xc5).lt.2.*xa*3)  then
+            if(abs(xi-xc4).lt.2.*xa*1.5)  then
+               hx(1,iCell) = 1000.*cos(.5*pii*(xi-xc4)/(2.*xa*1.5))**2. + &
+                    500.*cos(.5*pii*(xi-xc5)/(2.*xa*3.))**2.
+            else
+               hx(1,iCell) = 500.*cos(.5*pii*(xi-xc5)/(2.*xa*3.))**2.
+            endif
+         endif
+         
+
+
+!         if(abs(xi-xc2).lt.2.*xa*1.5)  then
+!            hx(1,iCell) = 2000.*cos(.5*pii*(xi-xc2)/(2.*xa*1.5))**2.
+!         end if
+
+!         if(abs(xi-xc3).lt.2.*xa*3)  then
+!            hx(1,iCell) = 1000.*cos(.5*pii*(xi-xc3)/(2.*xa*3.))**2.
+!         end if
+
 
          !====2. for cosine mountain
          !if(abs(xi-xc).lt.xa)  THEN
@@ -2266,7 +2416,7 @@ module init_atm_cases
          ! end if
 
          !====3. for shock mountain
-         hx(1,iCell) = hm*exp(-((xi-xc)/xa)**2)*cos(pii*(xi-xc)/xla)**2.
+         ! hx(1,iCell) = hm*exp(-((xi-xc)/xa)**2)*cos(pii*(xi-xc)/xla)**2.
 
          hx(nz,iCell) = zt
 
@@ -2345,8 +2495,11 @@ module init_atm_cases
          xn2m = 0.0000
          xn2l = 0.0001
 
-         vm = 10.
-         um = 0.
+!AAJ         vm = 10.
+!         um = 0.
+
+!         vm = 0.
+!         um = 10.
 
          do k=1,nz1
            v_init(k) = vm
@@ -2356,16 +2509,78 @@ module init_atm_cases
          do i=1,nCells
             do k=1,nz1
                ztemp   = .5*(zgrid(k,i)+zgrid(k+1,i))
-               tb(k,i) =  t0*(1. + xn2m/gravity*ztemp)
-               if(ztemp .le. zinv) then
-                  t (k,i) = t0*(1.+xn2l/gravity*ztemp)
+!AAJ               tb(k,i) =  t0*(1. + xn2m/gravity*ztemp)
+!AAJ               if(ztemp .le. zinv) then
+!                  t (k,i) = t0*(1.+xn2l/gravity*ztemp)
+!               else
+!                  t (k,i) = t0*(1.+xn2l/gravity*zinv+xn2/gravity*(ztemp-zinv))
+!               end if
+              if(ztemp .lt. 12000) then
+                 t (k,i) = 286.4 + ztemp/225.
+              else
+                 t (k,i) = 339.323 + (ztemp-12000.)/60. 
+              end if
+! MORE STABLE
+               !if(ztemp .lt. 12000) then
+               !   t (k,i) = 280. + ztemp/225.
+               !else
+               !   t (k,i) = 333. + (ztemp-12000.)/60. 
+               !end if
+
+!               call random_number(randnum)
+!               randnum = 0.1*(randnum*2.0 - 1.0)
+!               t(k,i) = t(k,i) + randnum
+               
+               if(ztemp .lt. 5000) then
+                  relhum(k,i) = 0.99
                else
-                  t (k,i) = t0*(1.+xn2l/gravity*zinv+xn2/gravity*(ztemp-zinv))
+                  relhum(k,i) = 0.99 - (ztemp-5000.)/10000.
                end if
-                  relhum(k,i) = 0.
+
+               ! variable RH across domain (be careful, periodic in x)
+!               xi = xCell(i)
+!               weight1 = 0.
+!               if (xi <= xc) then
+!                  weight1 = 0
+!               elseif (xi >= xc+50000) then
+!                  weight1 = 1
+!               else
+!                  weight1 = (xi-xc)/50000.
+!               endif
+!               weight1 = max(weight1,0.)
+!               weight1 = min(weight1,1.)
+!               if (xi .gt. xc) then
+!                  relhum(k,i) = (1.-weight1)*relhum(k,i) + (weight1)*relhum(k,i)*0.75
+!               endif
+
+               relhum(k,i) = max(relhum(k,i), 0.1)
+
+               !!               relhum(k,i) = 0.
+
+               pressure_tmp(k,i) = 100000.*exp(-ztemp/8250.84)
+               
+               tb(k,i) = t(k,i)
+               thi(k,i) = t(k,i)
+               tbi(k,i) = t(k,i)
+               cqw(k,i) = 1.
+               cqwb(k,i) = 1.
             end do
          end do
 
+         do i= 1,nCells
+
+         do k=1,nz1
+            temp     = (pressure_tmp(k,i)/p0)**rcp*thi(k,i)
+!!!            pres     = p0*p(k,i)**(1./rcp)
+            qvs      = 380.*exp(17.27*(temp-273.)/(temp-36.))/pressure_tmp(k,i)
+            scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+
+            if (i == 1) then
+               write(*,*) 'INIT:', k, temp, pressure_tmp(k,i), qvs, scalars(index_qv,k,i), relhum(k,i)
+            endif
+            
+         end do
+      end do
 !  set the velocity field - we are on a plane here.
 
          do i=1, nEdges
@@ -2374,39 +2589,147 @@ module init_atm_cases
             if(cell1 <= nCellsSolve .or. cell2 <= nCellsSolve) then
             do k=1,nz1
                ztemp = .25*( zgrid(k,cell1 )+zgrid(k+1,cell1 )  &
-                            +zgrid(k,cell2)+zgrid(k+1,cell2))
+                    +zgrid(k,cell2)+zgrid(k+1,cell2))
+
+               ! AAJ ADD
+!               if ((ztemp .ge. 0.) .and. (ztemp .lt. 1500)) then
+!                  vm = ztemp/55.
+!               elseif ((ztemp .ge. 1500.) .and. (ztemp .lt. 8000)) then
+!                  vm = 27.2
+!               elseif ((ztemp .ge. 8000.) .and. (ztemp .lt. 12000)) then
+!                  vm = 27.2 + (ztemp-8000)/170.
+!               elseif ((ztemp .ge. 12000.) .and. (ztemp .lt. 25000)) then
+!                  vm = 50.72 - (ztemp-12000)/180.
+!               endif
+
+               if (ztemp .lt. 1500) then
+                  vm = ztemp/150.
+               else
+                  vm = 10.
+               endif
+               if (vm .lt. 0.) then
+                  vm = 0.
+               endif
                u(k,i) =   vm*sin(angleEdge(i)) + um*cos(angleEdge(i))
             end do
             end if
          end do
 
 !
-!     reference sounding based on dry atmosphere
+!    for reference sounding
 !
-      pitop = 1.-.5*dzw(1)*gravity/(cp*tb(1,1)*zz(1,1))
+     qvb(:) = 0.0_RKIND
+
+     do itr=1,30
+
+      pitop = 1.-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
+      pibtop = 1.-.5*dzw(1)*gravity*(1.+qvb(1))/(cp*tb(1,1)*zz(1,1))
       do k=2,nz1
-         pitop = pitop-dzu(k)*gravity/(cp*(fzm(k)*tb(k,1)+fzp(k)*tb(k-1,1))   &
-                                         *(fzm(k)*zz(k,1)+fzp(k)*zz(k-1,1)))
+         pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*.5*(t(k,1)+t(k-1,1))   &
+                                   *.5*(zz(k,1)+zz(k-1,1)))
+         pibtop = pibtop-dzu(k)*gravity/(cp*cqwb(k,1)*.5*(tb(k,1)+tb(k-1,1))   &
+                                   *.5*(zz(k,1)+zz(k-1,1)))
+
+         !call mpas_log_write('$i $r $r $r $r', intArgs=(/k/), realArgs=(/pitop,tb(k,1),dzu(k),tb(k,1)/))
       end do
-      pitop = pitop-.5*dzw(nz1)*gravity/(cp*tb(nz1,1)*zz(nz1,1))
-      ptopb = p0*pitop**(1./rcp)
+      pitop = pitop-.5*dzw(nz1)*gravity*(1.+scalars(index_qv,nz1,1))/(cp*t(nz1,1)*zz(nz1,1))
+      pibtop = pibtop-.5*dzw(nz1)*gravity*(1.+qvb(nz1))/(cp*tb(nz1,1)*zz(nz1,1))
+      
+      call mpas_dmpar_bcast_real(dminfo, pitop)
+      call mpas_dmpar_bcast_real(dminfo, pibtop)
+
+      ptopb = p0*pibtop**(1./rcp)
+      call mpas_log_write('ptopb = $r', realArgs=(/0.01_RKIND*ptopb/))
 
       do i=1, nCells
-         pb(nz1,i) = pitop+.5*dzw(nz1)*gravity/(cp*tb(nz1,i)*zz(nz1,i))
-         p (nz1,i) = pitop+.5*dzw(nz1)*gravity/(cp*t (nz1,i)*zz(nz1,i))
+         pb(nz1,i) = pibtop+.5*dzw(nz1)*gravity*(1.+qvb(nz1))/(cp*tb(nz1,i)*zz(nz1,i))
+         p (nz1,i) = pitop+.5*dzw(nz1)*gravity*(1.+scalars(index_qv,nz1,i))/(cp*t (nz1,i)*zz(nz1,i))
          do k=nz1-1,1,-1
-            pb(k,i)  = pb(k+1,i) + dzu(k+1)*gravity/(cp*.5*(tb(k,i)+tb(k+1,i))   &
+            pb(k,i)  = pb(k+1,i) + dzu(k+1)*gravity/(cp*cqwb(k+1,i)*.5*(tb(k,i)+tb(k+1,i))   &
                                            *.5*(zz(k,i)+zz(k+1,i)))
-            p (k,i)  = p (k+1,i) + dzu(k+1)*gravity/(cp*.5*(t (k,i)+t (k+1,i))   &
+            p (k,i)  = p (k+1,i) + dzu(k+1)*gravity/(cp*cqw(k+1,i)*.5*(t (k,i)+t (k+1,i))   &
                                            *.5*(zz(k,i)+zz(k+1,i)))
          end do
          do k=1,nz1
             rb (k,i) = pb(k,i)**(1./rcv)/((rgas/p0)*tb(k,i)*zz(k,i))
             rtb(k,i) = rb(k,i)*tb(k,i)
             rr (k,i) = p (k,i)**(1./rcv)/((rgas/p0)*t (k,i)*zz(k,i))-rb(k,i)
-            cqw(k,i) = 1.
+            ppb(k,i) = p0*(zz(k,i)*rgas*rtb(k,i)/p0)**(cp/cv)
          end do
       end do
+
+           !
+     ! update water vapor mixing ratio from humidity profile
+     !
+      do i= 1,nCells
+         if (i == 2000) then
+!            do k=1,nz1
+!               write(*,*) 'QV', k, scalars(index_qv,k,i)
+!            enddo
+         endif
+
+         do k=1,nz1
+            temp     = p(k,i)*thi(k,i)
+            pres     = p0*p(k,i)**(1./rcp)
+            qvs      = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
+            scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+            if (i == 1) then
+               write(*,*) 'REF SOUND', k, temp, pres, qvs, relhum(k,i), scalars(index_qv,k,i)
+            endif
+         end do
+      end do
+
+      do k=1,nz1
+!*********************************************************************
+!           QVB = QV INCLUDES MOISTURE IN REFERENCE STATE
+!            qvb(k) = scalars(index_qv,k,1)
+
+!           QVB = 0 PRODUCES DRY REFERENCE STATE
+            qvb(k) = 0.
+!*********************************************************************
+      end do
+
+      do i= 1,nCells
+         do k=1,nz1
+            t (k,i) = thi(k,i)*(1.+1.61*scalars(index_qv,k,i))
+            tb(k,i) = tbi(k,i)*(1.+1.61*qvb(k))
+         end do
+         do k=2,nz1
+            cqw (k,i) = 1./(1.+.5*(scalars(index_qv,k,i)+scalars(index_qv,k-1,i)))
+            cqwb(k,i) = 1./(1.+.5*(qvb(k)+qvb(k-1)))
+         end do
+      end do
+
+      end do !end of iteration loop
+
+
+! !
+! !     reference sounding based on dry atmosphere
+! !
+!       pitop = 1.-.5*dzw(1)*gravity/(cp*tb(1,1)*zz(1,1))
+!       do k=2,nz1
+!          pitop = pitop-dzu(k)*gravity/(cp*(fzm(k)*tb(k,1)+fzp(k)*tb(k-1,1))   &
+!                                          *(fzm(k)*zz(k,1)+fzp(k)*zz(k-1,1)))
+!       end do
+!       pitop = pitop-.5*dzw(nz1)*gravity/(cp*tb(nz1,1)*zz(nz1,1))
+!       ptopb = p0*pitop**(1./rcp)
+
+!       do i=1, nCells
+!          pb(nz1,i) = pitop+.5*dzw(nz1)*gravity/(cp*tb(nz1,i)*zz(nz1,i))
+!          p (nz1,i) = pitop+.5*dzw(nz1)*gravity/(cp*t (nz1,i)*zz(nz1,i))
+!          do k=nz1-1,1,-1
+!             pb(k,i)  = pb(k+1,i) + dzu(k+1)*gravity/(cp*.5*(tb(k,i)+tb(k+1,i))   &
+!                                            *.5*(zz(k,i)+zz(k+1,i)))
+!             p (k,i)  = p (k+1,i) + dzu(k+1)*gravity/(cp*.5*(t (k,i)+t (k+1,i))   &
+!                                            *.5*(zz(k,i)+zz(k+1,i)))
+!          end do
+!          do k=1,nz1
+!             rb (k,i) = pb(k,i)**(1./rcv)/((rgas/p0)*tb(k,i)*zz(k,i))
+!             rtb(k,i) = rb(k,i)*tb(k,i)
+!             rr (k,i) = p (k,i)**(1./rcv)/((rgas/p0)*t (k,i)*zz(k,i))-rb(k,i)
+!             cqw(k,i) = 1.
+!          end do
+!       end do
 
        call mpas_log_write(' ***** base state sounding ***** ')
        call mpas_log_write('k       pb        p         rb         rtb         rr          tb          t')
@@ -2414,16 +2737,32 @@ module init_atm_cases
           call mpas_log_write('$i $r $r $r $r $r $r $r', intArgs=(/k/), realArgs=(/pb(k,1),p(k,1),rb(k,1),rtb(k,1),rr(k,1),tb(k,1),t(k,1)/))
        end do
 
-       scalars(index_qv,:,:) = 0.
+       
+!       scalars(index_qv,:,:) = 0.
+!       do i = 1, nCells
+!           do k=1,nz1
 
+!              temp   = p(k,i)*t(k,i)
+!              pres   = p0*p(k,i)**(1./rcp)
+!              qvs    = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
+!              scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+
+!              if (i == 1) then
+!                 write(*,*) 'ENV99', k, temp, pres, qvs, scalars(index_qv,k,i), relhum(k,i)
+!              endif
+
+!           end do
+!        enddo
 !-------------------------------------------------------------------
 !     ITERATIONS TO CONVERGE MOIST SOUNDING
       do itr=1,30
         pitop = 1.-.5*dzw(1)*gravity*(1.+scalars(index_qv,1,1))/(cp*t(1,1)*zz(1,1))
 
         do k=2,nz1
-          pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*(fzm(k)*t (k,1)+fzp(k)*t (k-1,1)) &
-                                                   *(fzm(k)*zz(k,1)+fzp(k)*zz(k-1,1)))
+!          pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*(fzm(k)*t (k,1)+fzp(k)*t (k-1,1)) &
+!               *(fzm(k)*zz(k,1)+fzp(k)*zz(k-1,1)))
+          pitop = pitop-dzu(k)*gravity/(cp*cqw(k,1)*.5*(t (k,1)+t (k-1,1)) &
+               *.5*(zz(k,1)+zz(k-1,1)))
         end do
         pitop = pitop - .5*dzw(nz1)*gravity*(1.+scalars(index_qv,nz1,1))/(cp*t(nz1,1)*zz(nz1,1))
         ptop = p0*pitop**(1./rcp)
@@ -2433,9 +2772,14 @@ module init_atm_cases
            pp(nz1,i) = ptop-ptopb+.5*dzw(nz1)*gravity*   &
                        (rr(nz1,i)+(rr(nz1,i)+rb(nz1,i))*scalars(index_qv,nz1,i))
            do k=nz1-1,1,-1
-              pp(k,i) = pp(k+1,i)+dzu(k+1)*gravity*                   &
-                            (fzm(k)*(rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*scalars(index_qv,k  ,i))  &
-                            +fzp(k)*(rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*scalars(index_qv,k+1,i)))
+              !pp(k,i) = pp(k+1,i)+dzu(k+1)*gravity*                   &
+              !              (fzm(k)*(rr(k  ,i)+(rr(k  ,i)+rb(k  ,i))*scalars(index_qv,k  ,i))  &
+              !              +fzp(k)*(rr(k+1,i)+(rr(k+1,i)+rb(k+1,i))*scalars(index_qv,k+1,i)))
+              pp(k,i) = pp(k+1,i)+dzu(k+1)*gravity*(    &
+                   fzm(k+1)*(rb(k+1,i)*(scalars(index_qv,k+1,i)-qvb(k+1))    &
+                   +rr(k+1,i)*(1.+scalars(index_qv,k+1,i)))         &
+                   +fzp(k+1)*(rb(k  ,i)*(scalars(index_qv,k  ,i)-qvb(k))      &
+                   +rr(k  ,i)*(1.+scalars(index_qv,k  ,i))))
            end do
            do k=1,nz1
               rt(k,i) = (pp(k,i)/(rgas*zz(k,i))                   &
@@ -2447,19 +2791,25 @@ module init_atm_cases
 !     update water vapor mixing ratio from humitidty profile
 !
            do k=1,nz1
+
               temp   = p(k,i)*t(k,i)
               pres   = p0*p(k,i)**(1./rcp)
               qvs    = 380.*exp(17.27*(temp-273.)/(temp-36.))/pres
               scalars(index_qv,k,i) = min(0.014_RKIND,relhum(k,i)*qvs)
+
+!              if (i == 1) then
+!                 write(*,*) 'ENV', k, temp, pres, qvs, scalars(index_qv,k,i), relhum(k,i)
+!              endif
+
            end do
 
-           do k=1,nz1
-              t (k,i) = t(k,i)*(1.+1.61*scalars(index_qv,k,i))
-           end do
-           do k=2,nz1
-              cqw(k,i) = 1./(1.+.5*( scalars(index_qv,k-1,i)  &
-                                    +scalars(index_qv,k  ,i)))
-           end do
+ !          do k=1,nz1
+ !             t (k,i) = t(k,i)*(1.+1.61*scalars(index_qv,k,i))
+ !          end do
+ !          do k=2,nz1
+ !             cqw(k,i) = 1./(1.+.5*( scalars(index_qv,k-1,i)  &
+ !                                   +scalars(index_qv,k  ,i)))
+ !          end do
 
         end do ! loop over cells
 
@@ -2618,6 +2968,10 @@ module init_atm_cases
          do k=1,nVertLevels
             rho(k,iCell) = rho_zz(k,iCell) * zz(k,iCell)
             theta(k,iCell) = t(k,iCell) / (1.0 + 1.61 * scalars(index_qv,k,iCell))
+
+            if (iCell == 1) then
+               write(*,*) 'END', k, rho(k,iCell), theta(k,iCell), scalars(index_qv,k,iCell)
+            endif
          end do
       end do
 
@@ -7722,13 +8076,13 @@ call mpas_log_write('Done with soil consistency check')
          snowh(iCell) = 0.0
 
          !surface and sea-surface temperatures:
-         skintemp(iCell) = 288.0
-         sst(iCell) = 288.0
+         skintemp(iCell) = 292.5 !288.0
+         sst(iCell) = 292.5 !288.0
 
          !soil layers:
-         tmn(iCell) = 288.0
+         tmn(iCell) = 292.5 !288.0
          do iSoil = 1, nSoilLevels
-            tslb(iSoil,iCell)   = 288.0
+            tslb(iSoil,iCell)   = 292.5 !288.0
             smcrel(iSoil,iCell) =   0.0
             sh2o(iSoil,iCell) =   0.0
             smois(iSoil,iCell) =   0.0

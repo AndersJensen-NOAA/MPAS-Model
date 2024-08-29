@@ -322,7 +322,7 @@
  logical,pointer:: config_o3climatology
  character(len=StrKIND),pointer:: radt_lw_scheme
  character(len=StrKIND),pointer:: microp_scheme
- logical,pointer:: config_microp_re
+ logical,pointer:: config_microp_re, sgs_clouds
 
  real(kind=RKIND),dimension(:),pointer    :: latCell,lonCell
  real(kind=RKIND),dimension(:),pointer    :: skintemp,snow,xice,xland
@@ -331,7 +331,10 @@
  real(kind=RKIND),dimension(:,:),pointer  :: cldfrac,m_hybi,o3clim,o3vmr
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:,:),pointer:: aerosols,ozmixm
-
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ integer,pointer:: index_qaprog
+      
 !local variables and arrays:
  integer:: ncols,nlevs
  integer:: i,j,k,n
@@ -343,10 +346,14 @@
  call mpas_pool_get_config(configs,'config_radt_lw_scheme',radt_lw_scheme      )
  call mpas_pool_get_config(configs,'config_microp_scheme' ,microp_scheme       )
  call mpas_pool_get_config(configs,'config_microp_re'     ,config_microp_re    )
+ call mpas_pool_get_config(configs,'config_sgs_clouds'     ,sgs_clouds    )
 
  call mpas_pool_get_array(mesh,'latCell',latCell)
  call mpas_pool_get_array(mesh,'lonCell',lonCell)
 
+ call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+ call mpas_pool_get_array(state,'scalars',scalars,time_lev)
+       
  call mpas_pool_get_array(state,'aerosols',aerosols,time_lev)
 
  call mpas_pool_get_array(sfc_input,'skintemp',skintemp)
@@ -365,6 +372,8 @@
  call mpas_pool_get_array(diag_physics,'m_hybi'    ,m_hybi    )
  call mpas_pool_get_array(diag_physics,'m_ps'      ,m_ps      )
 
+ qaprog => scalars(index_qaprog,:,:)
+
  do j = jts,jte
  do i = its,ite
     sfc_emiss_p(i,j) = sfc_emiss(i)
@@ -377,7 +386,11 @@
  do j = jts,jte
  do k = kts,kte
  do i = its,ite
-    cldfrac_p(i,k,j) = cldfrac(k,i)
+      if (sgs_clouds) then
+         cldfrac_p(i,k,j) = qaprog(k,i)
+      else
+         cldfrac_p(i,k,j) = cldfrac(k,i)
+      endif
  enddo
  enddo
  enddo

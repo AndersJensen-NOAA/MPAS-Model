@@ -107,12 +107,15 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
+ logical,pointer:: thompson_hail_aware, sgs_clouds
 
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
-
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ call mpas_pool_get_config(configs,'config_sgs_clouds',sgs_clouds)
+ 
 !sounding variables:
  if(.not.allocated(rho_p)    ) allocate(rho_p(ims:ime,kms:kme,jms:jme) )
  if(.not.allocated(th_p)     ) allocate(th_p(ims:ime,kms:kme,jms:jme)  )
@@ -166,13 +169,18 @@
           if(.not.allocated(nr_p) ) allocate(nr_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(nwfa_p) ) allocate(nwfa_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(nifa_p) ) allocate(nifa_p(ims:ime,kms:kme,jms:jme))
-          if(.not.allocated(qaprog_p) ) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
-
+          if (sgs_clouds) then
+             if(.not.allocated(qaprog_p) ) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(rthraten_p) ) allocate(rthraten_p(ims:ime,kms:kme,jms:jme))
+          endif
           if(.not.allocated(rainprod_p)) allocate(rainprod_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(evapprod_p)) allocate(evapprod_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(refl10cm_p)) allocate(refl10cm_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(refl10cm_1km_p)) allocate(refl10cm_1km_p(ims:ime,jms:jme))
-          
+          if (thompson_hail_aware) then
+             if(.not.allocated(ng_p) ) allocate(ng_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(volg_p)) allocate(volg_p(ims:ime,kms:kme,jms:jme))
+          endif
        case("mp_nssl2m")
           if(.not.allocated(qh_p)        ) allocate(qh_p(ims:ime,kms:kme,jms:jme))
           !number concentrations:
@@ -217,12 +225,15 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
+ logical,pointer:: thompson_hail_aware, sgs_clouds
 
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
-
+ call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
+ call mpas_pool_get_config(configs,'config_sgs_clouds',sgs_clouds)
+ 
 !sounding variables:
  if(allocated(rho_p)     ) deallocate(rho_p     )
  if(allocated(th_p)      ) deallocate(th_p      )
@@ -275,13 +286,19 @@
           if(allocated(nr_p) ) deallocate(nr_p )
           if(allocated(nwfa_p) ) deallocate(nwfa_p )
           if(allocated(nifa_p) ) deallocate(nifa_p )
-          if(allocated(qaprog_p) ) deallocate(qaprog_p )
-
+          if (sgs_clouds) then
+             if(allocated(qaprog_p) ) deallocate(qaprog_p )
+             if(allocated(rthraten_p) ) deallocate(rthraten_p )
+          endif
+          
           if(allocated(rainprod_p)) deallocate(rainprod_p)
           if(allocated(evapprod_p)) deallocate(evapprod_p)
           if(allocated(refl10cm_p)) deallocate(refl10cm_p)
           if(allocated(refl10cm_1km_p)) deallocate(refl10cm_1km_p)
-          
+          if (thompson_hail_aware) then
+             if(allocated(ng_p) ) deallocate(ng_p )
+             if(allocated(volg_p) ) deallocate(volg_p )
+          endif
        case("mp_nssl2m")
           if(allocated(qh_p)         ) deallocate(qh_p         )
           !number concentrations:
@@ -382,7 +399,7 @@
  end subroutine microphysics_init
 
 !=================================================================================================================
- subroutine driver_microphysics(configs,mesh,state,time_lev,diag,diag_physics,tend,itimestep,its,ite)
+ subroutine driver_microphysics(configs,mesh,state,time_lev,diag,diag_physics,tend,tend_physics,itimestep,its,ite)
 !=================================================================================================================
 
  use mpas_constants, only : rvord
@@ -399,10 +416,11 @@
  type(mpas_pool_type),intent(inout):: diag
  type(mpas_pool_type),intent(inout):: diag_physics
  type(mpas_pool_type),intent(inout):: tend
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
- logical,pointer:: thompson_aerosol_aware,thompson_hail_aware
+ logical,pointer:: thompson_aerosol_aware,thompson_hail_aware,sgs_clouds
   character(len=StrKIND),pointer:: nssl_moments
 
 !local variables and arrays:
@@ -433,6 +451,7 @@
  call mpas_pool_get_config(configs,'config_thompson_aerosol_aware',thompson_aerosol_aware)
  call mpas_pool_get_config(configs,'config_thompson_hail_aware',thompson_hail_aware)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
+ call mpas_pool_get_config(configs,'config_sgs_clouds',sgs_clouds)
 
 !... allocation of microphysics arrays:
 !$OMP MASTER
@@ -444,7 +463,7 @@
  call precip_from_MPAS(configs,diag_physics,its,ite)
 
 !... initialization of soundings for non-hydrostatic dynamical cores.
- call microphysics_from_MPAS(configs,mesh,state,time_lev,diag,diag_physics,its,ite)
+ call microphysics_from_MPAS(configs,mesh,state,time_lev,diag,diag_physics,tend_physics,its,ite)
 
 !... call to different cloud microphysics schemes:
  microp_select: select case(microp_scheme)
@@ -470,44 +489,108 @@
        call mpas_timer_start('Thompson')
        do while (istep .le. n_microp)
 
-       if (thompson_aerosol_aware) then
-          call thompson_3d_to_1d_driver( &
-                  th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
-                  qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
-                  qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
-                  nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
-                  nwfa2d    = nwfa2d_p    , qaprog = qaprog_p                                     , &
-                  pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
-                  w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
-                  rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
-                  snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
-                  sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
-                  re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
-                  has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
-                  ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
-                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
-                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                  its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
-                  )
-       else
-          call thompson_3d_to_1d_driver( &
-                  th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
-                  qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
-                  qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
-!!!                  nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
-                  pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
-                  w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
-                  rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
-                  snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
-                  sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
-                  re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
-                  has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
-                  ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
-                  ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
-                  ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                  its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
-                  )
-       endif
+          if (thompson_aerosol_aware) then
+             if (thompson_hail_aware) then
+                call thompson_3d_to_1d_driver( &
+                th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                ng        = ng_p        , qb         = volg_p       ,                             &
+                nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                nwfa2d    = nwfa2d_p                                                            , &
+                pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                )
+             else
+                if (sgs_clouds) then
+                   call thompson_3d_to_1d_driver( &
+                   th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                   qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                   qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                   nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                   nwfa2d    = nwfa2d_p    , qaprog = qaprog_p                                     , &
+                   pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                   w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                   rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                   snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                   sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                   re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                   has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                   ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                   ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                   ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                   its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                   )
+                else
+                   call thompson_3d_to_1d_driver( &
+                   th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                   qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                   qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                   nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                   nwfa2d    = nwfa2d_p    , &
+                   pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                   w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                   rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                   snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                   sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                   re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                   has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                   ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                   ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                   ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                   its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                   )
+                endif
+             endif
+          else
+             if(sgs_clouds) then
+                call thompson_3d_to_1d_driver( &
+                th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+!!!   nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                qaprog = qaprog_p, lw_in = rthraten_p                                           , &
+                pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                )
+             else
+                call thompson_3d_to_1d_driver( &
+                th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
+                qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
+                qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+!!!   nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
+                pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
+                w         = w_p         , dt_in      = dt_microp    , itimestep  = itimestep    , &
+                rainnc    = rainnc_p    , rainncv    = rainncv_p    , snownc     = snownc_p     , &
+                snowncv   = snowncv_p   , graupelnc  = graupelnc_p  , graupelncv = graupelncv_p , &
+                sr        = sr_p        , rainprod   = rainprod_p   , evapprod   = evapprod_p   , &
+                re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
+                has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
+                ntc       = ntc_p       , muc        = muc_p        , refl_10cm  = refl10cm_p   , &
+                ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
+                ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
+                its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                )
+             endif
+          endif
        istep = istep + 1
        enddo
        call mpas_timer_stop('Thompson')
