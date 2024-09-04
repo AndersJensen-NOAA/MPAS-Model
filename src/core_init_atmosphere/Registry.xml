@@ -70,7 +70,7 @@
                                         8 = surface field (SST, sea-ice) update file for use with real-data simulations, \newline
                                         9 = lateral boundary conditions update file for use with real-data simulations, \newline
                                         13 = CAM-MPAS 3-d grid with specified topography and zeta levels, \newline
-					44 = microphysics test: 3D stratocumulus, \newline
+					55 = microphysics test: 3D stratocumulus, \newline
 					66 = microphysics test: 2D flow over terrain"
                      possible_values="1 -- 99"/>
 
