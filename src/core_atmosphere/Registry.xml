@@ -2272,7 +2272,7 @@
                              units="m^{-3} s^{-1}"
                              description="Lateral boundary tendency of water-friendly aerosol number concentration"/>
 
-                         <var name="lbc_qaprog" name_in_code="qaprog" array_group="passive" packages="mp_thompson_in" units="s^{-1}"
+                        <var name="lbc_qaprog" name_in_code="qaprog" array_group="passive" packages="mp_thompson_in" units="s^{-1}"
                              description="Lateral boundary tendency of Prognostic cloud fraction"/>
 
                 </var_array>
