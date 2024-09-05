@@ -406,7 +406,8 @@
     rthblten_p,       &!tendency of potential temperature due to PBL processes.
     rqvblten_p,       &!tendency of water vapor mixing ratio due to PBL processes.
     rqcblten_p,       &!tendency of cloud water mixing ratio due to PBL processes.
-    rqiblten_p         !tendency of cloud ice mixing ratio due to PBL processes.
+    rqiblten_p,       &!tendency of cloud ice mixing ratio due to PBL processes.
+    rqccldfracten_p
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     kzh_p,            &!

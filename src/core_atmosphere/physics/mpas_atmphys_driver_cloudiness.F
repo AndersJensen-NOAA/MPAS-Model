@@ -14,6 +14,7 @@
  use mpas_atmphys_constants, only: ep_2
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
+ use module_mp_thompson_pc2
  
  implicit none
  private
@@ -81,6 +82,10 @@
     case("cld_fraction_mynn")
        if(.not.allocated(qibl_p)) allocate(qibl_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
+
+    case("cld_pc2")
+       if(.not.allocated(qaprog_p)  ) allocate(qaprog_p(ims:ime,kms:kme,jms:jme)  )
+       if(.not.allocated(rqccldfracten_p)  ) allocate(rqccldfracten_p(ims:ime,kms:kme,jms:jme)  )
     case default
 
  end select cld_fraction_select
@@ -112,6 +117,11 @@
 
        if(allocated(qibl_p)) deallocate(qibl_p)
        if(allocated(qcbl_p)) deallocate(qcbl_p)
+
+    case("cld_pc2")
+       if(allocated(qaprog_p)) deallocate(qaprog_p)
+       if(allocated(rqccldfracten_p)) deallocate(rqccldfracten_p)
+       
     case default
 
  end select cld_fraction_select
@@ -120,20 +130,22 @@
  end subroutine deallocate_cloudiness
 
 !=================================================================================================================
- subroutine cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
  integer,intent(in):: its,ite
  integer,intent(in):: itimestep
-
+ 
 !input and inout arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
  type(mpas_pool_type),intent(in)   :: sfc_input
+ type(mpas_pool_type),intent(in)   :: state
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -142,12 +154,18 @@
  real(kind=RKIND),dimension(:),pointer:: areaCell,meshDensity
  real(kind=RKIND),dimension(:),pointer:: xland
 
- real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl
+ real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl,rqccldfracten
 
  character(len=StrKIND),pointer:: radt_cld_scheme
 
+ integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+
 !-----------------------------------------------------------------------------------------------------------------
 
+ call mpas_pool_get_array(state,'scalars',scalars,1)
+ call mpas_pool_get_dimension(state,'index_qaprog'  ,index_qaprog  )     
  call mpas_pool_get_config(configs,'config_len_disp',len_disp)
 
  call mpas_pool_get_array(mesh,'areaCell'   ,areaCell   )
@@ -214,6 +232,18 @@
        enddo
        enddo
 
+    case("cld_pc2")
+       call mpas_pool_get_array(tend_physics,'rqccldfracten',rqccldfracten)
+       qaprog   => scalars(index_qaprog,:,:)
+       do j = jts,jte
+       do k = kts,kte
+       do i = its,ite
+          qaprog_p(i,k,j) = qaprog(k,i)
+          rqccldfracten_p(i,k,j) = rqccldfracten(k,i)
+       enddo
+       enddo
+       enddo
+
     case default
  end select cld_fraction_select  
  
@@ -221,7 +251,7 @@
  end subroutine cloudiness_from_MPAS
 
 !=================================================================================================================
- subroutine cloudiness_to_MPAS(diag_physics,its,ite)
+ subroutine cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -229,14 +259,22 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
-
+ type(mpas_pool_type),intent(in)   :: configs
+ type(mpas_pool_type),intent(in)   :: state
 !local variables and pointers:
  integer:: i,j,k
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
+ character(len=StrKIND),pointer:: radt_cld_scheme
 
+ integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+      
 !-----------------------------------------------------------------------------------------------------------------
-
+ call mpas_pool_get_array(state,'scalars',scalars,1)
+ call mpas_pool_get_dimension(state,'index_qaprog'  ,index_qaprog  )     
+ call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
  call mpas_pool_get_array(diag_physics,'cldfrac',cldfrac)
 
  do j = jts,jte
@@ -246,16 +284,32 @@
  enddo
  enddo
  enddo
+
+ cld_fraction_select: select case (trim(radt_cld_scheme))
+      
+ case("cld_pc2")
+    qaprog   => scalars(index_qaprog,:,:)
+    do j = jts,jte
+    do k = kts,kte
+    do i = its,ite
+       qaprog(k,i) = qaprog_p(i,k,j)
+    enddo
+    enddo
+    enddo
+
+ case default
+ end select cld_fraction_select
  
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine driver_cloudiness(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
+ type(mpas_pool_type),intent(in)   :: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
  integer,intent(in):: its,ite
@@ -263,20 +317,26 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
 
  integer:: i,j,k
 
+! integer,pointer:: index_qaprog
+! real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+! real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 !-----------------------------------------------------------------------------------------------------------------
 !call mpas_log_write('')
 !call mpas_log_write('--- enter subroutine driver_cloudiness:')
-
+! call mpas_pool_get_array(state,'scalars',scalars,1)
+! call mpas_pool_get_dimension(state,'index_qaprog'  ,index_qaprog  )
+      
  call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
 
 !copy MPAS arrays to local arrays:
- call cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ call cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 
  cld_fraction_select: select case (trim(radt_cld_scheme))
     case("cld_incidence")
@@ -309,12 +369,38 @@
                        its,  ite , jts , jte , kts , kte  )
       call mpas_timer_stop('cal_mynncld')
 
+      case("cld_pc2")
+!         qaprog   => scalars(index_qaprog,:,:)
+         call cal_pc2(qa=qaprog_p, qv=qvrad_p, qc=qcrad_p, &
+              ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,   &
+              ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme ,   &
+              its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte     &
+              )
+!         call cal_pc2( &
+!         cldfra = cldfrac_p , qv     = qvrad_p    , qc = qcrad_p , &
+!         p      = pres_p , t  = t_p     , rho = rho_p   , &
+!         ! TENDNECY
+
+!         )
+      call mpas_timer_start('cal_pc2')
+
+!     subroutine subgrid_scale_liquid_clouds(
+!     kts,
+!     kte
+!     no_micro, l_qcdt, temp, rho, pres, lvap, ocp, qvs, w1d, lw1d, &
+!       qa, qv, rc, nc, rr, prw_sgi, prw_sgb, prw_sge)
+
+! (cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite)
+      !call cal_pc2(cldfrac_p, qcrad_p, qirad_p, qcbl_p, qibl_p &
+      !     its,  ite , jts , jte , kts , kte  )
+      call mpas_timer_stop('cal_pc2')
+
     case default
 
  end select cld_fraction_select
 
 !copy local arrays to MPAS grid:
- call cloudiness_to_MPAS(diag_physics,its,ite)
+ call cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 
 !call mpas_log_write('--- end subroutine driver_cloudiness.')
 
