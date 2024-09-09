@@ -215,6 +215,9 @@
     nwfa_p,           &!
     nifa_p,             zrw_p, zgw_p, zhw_p
 
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    qaprog_p, rqccften_p, rqicften_p
+
  real(kind=RKIND),dimension(:,:),allocatable:: &
     muc_p,            &!
     ntc_p,            &!

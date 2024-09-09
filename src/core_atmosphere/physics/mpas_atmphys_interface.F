@@ -590,9 +590,12 @@
  character(len=StrKIND),pointer:: mp_scheme
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
  integer,pointer:: index_nc,index_ni,index_nr,index_nifa,index_nwfa
+ integer,pointer:: index_qaprog
  real(kind=RKIND),dimension(:),pointer    :: nifa2d,nwfa2d,nt_c,mu_c
 !TEMPO/NSSL
  character(len=StrKIND),pointer:: nssl_moments
+ character(len=StrKIND),pointer:: config_radt_cld_scheme
+
  logical,pointer:: tempo_hailaware
  integer,pointer:: index_qh
  integer,pointer:: index_zrw,index_zgw,index_zhw
@@ -604,11 +607,13 @@
  real(kind=RKIND),dimension(:,:),pointer  :: rho_zz,theta_m,pressure_p
  real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg,qh
  real(kind=RKIND),dimension(:,:),pointer  :: ni,nr,nc,ns,ng,nh,nccn,nwfa,nifa
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
  real(kind=RKIND),dimension(:,:),pointer  :: volg,volh,zrw,zgw,zhw
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
  real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
+ real(kind=RKIND),dimension(:,:),pointer  :: rqccften,rqicften
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -619,7 +624,8 @@
  call mpas_pool_get_config(configs,'config_microp_scheme',mp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',tempo_hailaware)
- 
+ call mpas_pool_get_config(configs,'config_radt_cld_scheme',config_radt_cld_scheme)
+
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
 
@@ -761,6 +767,22 @@
              enddo
              enddo
              enddo
+
+             if (config_radt_cld_scheme == 'cld_fraction_prognostic') then
+                qaprog   => scalars(index_qaprog,:,:)
+                call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+                call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+
+                do j = jts, jte
+                do k = kts, kte
+                do i = its, ite
+                   qaprog_p(i,k,j) = qaprog(k,i)
+                   rqccften_p(i,k,j) = rqccften(k,i)
+                   rqicften_p(i,k,j) = rqicften(k,i)
+                enddo
+                enddo
+                enddo
+             endif
 
              if (tempo_hailaware) then
                 call mpas_pool_get_dimension(state,'index_ng'  ,index_ng  )
@@ -964,9 +986,13 @@
 !local pointers:
  character(len=StrKIND),pointer:: mp_scheme
  character(len=StrKIND),pointer:: nssl_moments
+ character(len=StrKIND),pointer:: config_radt_cld_scheme
+
  logical,pointer:: tempo_hailaware
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
  integer,pointer:: index_nc,index_ni,index_nr,index_nifa,index_nwfa
+ integer,pointer:: index_qaprog
+
 !TEMPO/NSSL
  integer,pointer:: index_qh
  integer,pointer:: index_zrw,index_zgw,index_zhw
@@ -982,11 +1008,13 @@
  real(kind=RKIND),dimension(:,:),pointer  :: dtheta_dt_mp
  real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg,qh
  real(kind=RKIND),dimension(:,:),pointer  :: ni,nr,nc,ns,ng,nh,nccn,nwfa,nifa
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
  real(kind=RKIND),dimension(:,:),pointer  :: volg,volh,zrw,zgw,zhw
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
  real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -999,6 +1027,7 @@
  call mpas_pool_get_config(configs,'config_microp_scheme',mp_scheme)
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',tempo_hailaware)
+ call mpas_pool_get_config(configs,'config_radt_cld_scheme',config_radt_cld_scheme)
 
  call mpas_pool_get_array(mesh,'zz'   ,zz   )
  call mpas_pool_get_array(mesh,'zgrid',zgrid)
@@ -1173,6 +1202,22 @@
              enddo
              enddo
              enddo
+
+             if (config_radt_cld_scheme == 'cld_fraction_prognostic') then
+                qaprog   => scalars(index_qaprog,:,:)
+                call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+                call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+
+                do j = jts, jte
+                do k = kts, kte
+                do i = its, ite
+                   qaprog(k,i) = qaprog_p(i,k,j)
+                   rqccften(k,i) = rqccften_p(i,k,j)
+                   rqicften(k,i) = rqicften_p(i,k,j)
+                enddo
+                enddo
+                enddo
+             endif
 
              if (tempo_hailaware) then
                 call mpas_pool_get_dimension(state,'index_ng'  ,index_ng  )

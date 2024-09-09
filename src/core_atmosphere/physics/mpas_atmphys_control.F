@@ -250,6 +250,7 @@
            config_radt_cld_scheme .eq. 'cld_incidence'         .or. &
            config_radt_cld_scheme .eq. 'cld_fraction'          .or. &
            config_radt_cld_scheme .eq. 'cld_fraction_thompson' .or. &
+           config_radt_cld_scheme .eq. 'cld_fraction_prognostic' .or. &
            config_radt_cld_scheme .eq. 'cld_fraction_mynn')) then
 
     write(mpas_err_message,'(A,A20)') 'illegal value for calculation of cloud fraction: ', &

@@ -84,6 +84,11 @@
     case("cld_fraction_mynn")
        if(.not.allocated(qibl_p)) allocate(qibl_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
+
+    case("cld_fraction_prognostic")
+         if(.not.allocated(qaprog_p)  ) allocate(qaprog_p(ims:ime,kms:kme,jms:jme)  )
+         if(.not.allocated(rqccften_p)  ) allocate(rqccften_p(ims:ime,kms:kme,jms:jme)  )
+         if(.not.allocated(rqicften_p)  ) allocate(rqicften_p(ims:ime,kms:kme,jms:jme)  )
     case default
 
  end select cld_fraction_select
@@ -112,9 +117,13 @@
  cld_fraction_select: select case (trim(radt_cld_scheme))
 
     case("cld_fraction_mynn")
-
        if(allocated(qibl_p)) deallocate(qibl_p)
        if(allocated(qcbl_p)) deallocate(qcbl_p)
+
+    case("cld_fraction_prognostic")
+       if(allocated(qaprog_p)) deallocate(qaprog_p)
+       if(allocated(rqccften_p)) deallocate(rqccften_p)
+       if(allocated(rqicften_p)) deallocate(rqicften_p)
     case default
 
  end select cld_fraction_select
@@ -123,7 +132,7 @@
  end subroutine deallocate_cloudiness
 
 !=================================================================================================================
- subroutine cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -133,10 +142,12 @@
 !input and inout arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
+ type(mpas_pool_type),intent(in)   :: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -146,8 +157,13 @@
  real(kind=RKIND),dimension(:),pointer:: xland
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften
 
  character(len=StrKIND),pointer:: radt_cld_scheme
+
+  integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -219,6 +235,22 @@
        enddo
        enddo
 
+    case("cld_fraction_prognostic")
+         call mpas_pool_get_array(state,'scalars',scalars,1)
+         call mpas_pool_get_dimension(state,'index_qaprog'  ,index_qaprog  )  
+         call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+         call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+
+         qaprog   => scalars(index_qaprog,:,:)
+         do j = jts,jte
+         do k = kts,kte
+         do i = its,ite
+            qaprog_p(i,k,j) = qaprog(k,i)
+            rqccften_p(i,k,j) = rqccften(k,i)
+            rqicften_p(i,k,j) = rqicften(k,i)
+         enddo
+         enddo
+         enddo
     case default
  end select cld_fraction_select  
  
@@ -226,7 +258,7 @@
  end subroutine cloudiness_from_MPAS
 
 !=================================================================================================================
- subroutine cloudiness_to_MPAS(diag_physics,its,ite)
+ subroutine cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -234,15 +266,22 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
-
+ type(mpas_pool_type),intent(in)   :: configs
+ type(mpas_pool_type),intent(inout):: state
+ 
 !local variables and pointers:
  integer:: i,j,k
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
-
+ character(len=StrKIND),pointer:: radt_cld_scheme
+ integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+ 
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_array(diag_physics,'cldfrac',cldfrac)
+ call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
 
  do j = jts,jte
  do k = kts,kte
@@ -251,16 +290,37 @@
  enddo
  enddo
  enddo
- 
+
+ cld_fraction_select: select case (trim(radt_cld_scheme))
+
+   case("cld_fraction_prognostic")
+
+      call mpas_pool_get_array(state,'scalars',scalars,1)
+      call mpas_pool_get_dimension(state,'index_qaprog'  ,index_qaprog  )     
+      qaprog   => scalars(index_qaprog,:,:)
+      
+      do j = jts,jte
+      do k = kts,kte
+      do i = its,ite
+         qaprog(k,i) = qaprog_p(i,k,j)
+      enddo
+      enddo
+      enddo
+
+   case default
+
+   end select cld_fraction_select
+   
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine driver_cloudiness(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
+ type(mpas_pool_type),intent(in)   :: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
  integer,intent(in):: its,ite
@@ -268,6 +328,7 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
@@ -281,7 +342,7 @@
  call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
 
 !copy MPAS arrays to local arrays:
- call cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ call cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 
  cld_fraction_select: select case (trim(radt_cld_scheme))
     case("cld_incidence")
@@ -314,12 +375,17 @@
                        its,  ite , jts , jte , kts , kte  )
       call mpas_timer_stop('cal_mynncld')
 
+    case("cld_fraction_prognostic")
+      call mpas_timer_start('cal_prognostic_cldfrac')
+      call cal_prognostic_cldfrac(cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite)
+      call mpas_timer_stop('cal_prognostic_cldfrac')
+      
     case default
 
  end select cld_fraction_select
 
 !copy local arrays to MPAS grid:
- call cloudiness_to_MPAS(diag_physics,its,ite)
+ call cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 
 !call mpas_log_write('--- end subroutine driver_cloudiness.')
 
@@ -495,6 +561,69 @@
  enddo
 
  end subroutine cal_mynncld
+
+!=================================================================================================================
+ subroutine cal_prognostic_cldfrac(cldfrac,t_p,pres_p,qv,qc,qi,qs,its,ite)
+!=================================================================================================================
+   !input arguments:
+ integer,intent(in):: its,ite
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi,qs
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: t_p,pres_p
+
+!output arguments:
+ real(kind=RKIND),intent(out),dimension(ims:ime,kms:kme,jms:jme):: cldfrac
+
+!local variables:
+ integer:: i,j,k
+
+ real(kind=RKIND),parameter:: alpha0  = 100.
+ real(kind=RKIND),parameter:: gamma   = 0.49
+ real(kind=RKIND),parameter:: qcldmin = 1.e-12
+ real(kind=RKIND),parameter:: pexp    = 0.25
+ real(kind=RKIND),parameter:: rhgrid  = 1.0
+
+ real(kind=RKIND),parameter:: svp1  = 0.61078
+ real(kind=RKIND),parameter:: svp2  = 17.2693882
+ real(kind=RKIND),parameter:: svpi2 = 21.8745584
+ real(kind=RKIND),parameter:: svp3  = 35.86
+ real(kind=RKIND),parameter:: svpi3 = 7.66
+ real(kind=RKIND),parameter:: svpt0 = 273.15
+
+ real(kind=RKIND):: esi,esw,qvsi,qvsw
+ real(kind=RKIND):: arg,denom,qcld,qvs,rhum,subsat,weight
+
+!-----------------------------------------------------------------------------------------------------------------
+
+ do j = jts,jte
+ do k = kts,kte
+ do i = its,ite
+    cldfrac(i,k,j) = 0._RKIND
+ enddo
+ enddo
+ enddo
+ 
+ do j = jts,jte
+ do k = kts,kte
+ do i = its,ite
+
+!... calculation of the saturation mixing ratios over water and over ice (Murray, 1966):
+    esw = 1000. * svp1 * exp(svp2 * (t_p(i,k,j) - svpt0) / (t_p(i,k,j) - svp3))
+    esi = 1000. * svp1 * exp(svpi2 * (t_p(i,k,j) - svpt0) / (t_p(i,k,j) - svpi3))
+
+    qvsw = ep_2 * esw / (pres_p(i,k,j) - esw)
+    qvsi = ep_2 * esi / (pres_p(i,k,j) - esi)
+
+    qcld = qc(i,k,j) + qi(i,k,j) + qs(i,k,j)
+    if(qcld .lt. qcldmin) then
+       weight = 0.
+    else
+       weight = (qi(i,k,j) + qs(i,k,j)) / qcld
+    endif
+
+    qvs = (1-weight) * qvsw + weight * qvsi
+    rhum = qv(i,k,j) / qvs
+
+ end subroutine cal_prognostic_cldfrac
 !=================================================================================================================
  end module mpas_atmphys_driver_cloudiness
 !=================================================================================================================
