@@ -108,7 +108,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
- logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
+ logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware, config_tempo_cldfrac
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -116,6 +116,7 @@
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
+ call mpas_pool_get_config(configs,'config_tempo_cldfrac',config_tempo_cldfrac)
 
 !sounding variables:
  if(.not.allocated(rho_p) ) allocate(rho_p(ims:ime,kms:kme,jms:jme) )
@@ -210,6 +211,13 @@
              if(.not.allocated(nwfa_p)  ) allocate(nwfa_p(ims:ime,kms:kme,jms:jme))
           endif
 
+          if (config_tempo_cldfrac) then
+             if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
+          endif
+
        case("mp_nssl2m")
           if(.not.allocated(qh_p) ) allocate(qh_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(nc_p) ) allocate(nc_p(ims:ime,kms:kme,jms:jme))
@@ -258,7 +266,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
- logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
+ logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware, config_tempo_cldfrac
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -266,6 +274,7 @@
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
+ call mpas_pool_get_config(configs,'config_tempo_cldfrac',config_tempo_cldfrac)
 
 !sounding variables:
  if(allocated(rho_p) ) deallocate(rho_p )
@@ -356,6 +365,13 @@
              if(allocated(nc_p)    ) deallocate(nc_p    )
              if(allocated(nifa_p)  ) deallocate(nifa_p  )
              if(allocated(nwfa_p)  ) deallocate(nwfa_p  )
+          endif
+
+          if (config_tempo_cldfrac) then
+             if(allocated(qaprog_p)) deallocate(qaprog_p)
+             if(allocated(rqccften_p)) deallocate(rqccften_p)
+             if(allocated(rqicften_p)) deallocate(rqicften_p)
+             if(allocated(rqacften_p)) deallocate(rqacften_p)
           endif
 
        case("mp_nssl2m")

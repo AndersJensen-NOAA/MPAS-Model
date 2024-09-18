@@ -872,9 +872,10 @@
              endif
 
              if (config_radt_cld_scheme == 'cld_fraction_prognostic') then
-                qaprog   => scalars(index_qaprog,:,:)
+                call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
                 call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
                 call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+                qaprog   => scalars(index_qaprog,:,:)
 
                 do j = jts, jte
                 do k = kts, kte
@@ -1381,9 +1382,10 @@
              endif
 
              if (config_radt_cld_scheme == 'cld_fraction_prognostic') then
-                qaprog   => scalars(index_qaprog,:,:)
+                call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
                 call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
                 call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+                qaprog   => scalars(index_qaprog,:,:)
 
                 do j = jts, jte
                 do k = kts, kte
