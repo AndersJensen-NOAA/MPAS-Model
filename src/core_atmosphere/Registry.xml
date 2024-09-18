@@ -3915,6 +3915,9 @@
 
 		<var name="rqicften" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
                      description="tendency of cloud ice mixing ratio due to cloud fraction scheme"/>
+
+		<var name="rqacften" type="real" dimensions="nVertLevels nCells Time" units="s^{-1}"
+                     description="tendency of prognostic cloud fraction due to cloud fraction scheme"/>
 #endif
         </var_struct>
 
