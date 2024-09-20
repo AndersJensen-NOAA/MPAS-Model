@@ -3913,11 +3913,17 @@
 		<var name="rqccften" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
                      description="tendency of cloud water mixing ratio due to cloud fraction scheme"/>
 
+		<var name="rnccften" type="real" dimensions="nVertLevels nCells Time" units="nb kg^{-1} s^{-1}"
+                     description="tendency of cloud number  mixing ratio due to cloud fraction scheme"/>
+
 		<var name="rqicften" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
                      description="tendency of cloud ice mixing ratio due to cloud fraction scheme"/>
 
 		<var name="rqacften" type="real" dimensions="nVertLevels nCells Time" units="s^{-1}"
                      description="tendency of prognostic cloud fraction due to cloud fraction scheme"/>
+
+		<var name="rthcften" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="tendency of potential temperature due to cloud fraction scheme"/>
 #endif
         </var_struct>
 

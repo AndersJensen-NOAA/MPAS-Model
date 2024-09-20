@@ -14,7 +14,8 @@
  use mpas_atmphys_constants, only: ep_2
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
- 
+ use module_mp_tempo_cldfrac, only: cldfrac_driver
+
  implicit none
  private
  public:: allocate_cloudiness,   &
@@ -86,10 +87,14 @@
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
 
     case("cld_fraction_prognostic")
+       if(.not.allocated(w_p)) allocate(w_p(ims:ime,kms:kme,jms:jme))
          if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
          if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rnccften_p)) allocate(rnccften_p(ims:ime,kms:kme,jms:jme))
          if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
          if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rthcften_p)) allocate(rthcften_p(ims:ime,kms:kme,jms:jme))
+
     case default
 
  end select cld_fraction_select
@@ -122,10 +127,14 @@
        if(allocated(qcbl_p)) deallocate(qcbl_p)
 
     case("cld_fraction_prognostic")
+       if(allocated(w_p)) deallocate(w_p)
        if(allocated(qaprog_p)) deallocate(qaprog_p)
        if(allocated(rqccften_p)) deallocate(rqccften_p)
+       if(allocated(rnccften_p)) deallocate(rnccften_p)
        if(allocated(rqicften_p)) deallocate(rqicften_p)
        if(allocated(rqacften_p)) deallocate(rqacften_p)
+       if(allocated(rthcften_p)) deallocate(rthcften_p)
+
     case default
 
  end select cld_fraction_select
@@ -159,11 +168,11 @@
  real(kind=RKIND),dimension(:),pointer:: xland
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl
- real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften,w
 
  character(len=StrKIND),pointer:: radt_cld_scheme
 
-  integer,pointer:: index_qaprog
+ integer,pointer:: index_qaprog
  real(kind=RKIND),dimension(:,:),pointer  :: qaprog
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
@@ -239,19 +248,25 @@
 
     case("cld_fraction_prognostic")
          call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
+         call mpas_pool_get_array(state,'w',w,1) ! time level 1
          call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
          call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+         call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
          call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
          call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
+         call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
 
          qaprog   => scalars(index_qaprog,:,:)
          do j = jts,jte
          do k = kts,kte
          do i = its,ite
+            w_p(i,k,j) = w(k,i)
             qaprog_p(i,k,j) = qaprog(k,i)
             rqccften_p(i,k,j) = rqccften(k,i)
+            rnccften_p(i,k,j) = rnccften(k,i)
             rqicften_p(i,k,j) = rqicften(k,i)
             rqacften_p(i,k,j) = rqacften(k,i)
+            rthcften_p(i,k,j) = rthcften(k,i)
          enddo
          enddo
          enddo
@@ -262,7 +277,7 @@
  end subroutine cloudiness_from_MPAS
 
 !=================================================================================================================
- subroutine cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
+ subroutine cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -270,6 +285,7 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(inout):: state
  
@@ -278,10 +294,10 @@
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
  character(len=StrKIND),pointer:: radt_cld_scheme
- integer,pointer:: index_qaprog
- real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ integer,pointer:: index_qaprog, index_qv, index_qc
+ real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
- real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -303,17 +319,41 @@
       call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
       call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
       call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+      call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
       call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
       call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
+      call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
+      call mpas_pool_get_dimension(state,'index_qc',index_qc)
+      call mpas_pool_get_dimension(state,'index_qv',index_qv)
       qaprog   => scalars(index_qaprog,:,:)
+      qc   => scalars(index_qc,:,:)
+      qv   => scalars(index_qv,:,:)
       
       do j = jts,jte
       do k = kts,kte
       do i = its,ite
          qaprog(k,i) = qaprog_p(i,k,j)
          rqccften(k,i) = rqccften_p(i,k,j)
+         rnccften(k,i) = rnccften_p(i,k,j)
          rqicften(k,i) = rqicften_p(i,k,j)
          rqacften(k,i) = rqacften_p(i,k,j)
+         rthcften(k,i) = rthcften_p(i,k,j)
+
+         ! Prognostic cloud fraction state update
+         qc(k,i) = qc(k,i) + rqccften(k,i) * dt_dyn
+         qv(k,i) = qv(k,i) - rqccften(k,i) * dt_dyn
+         qaprog(k,i) = qaprog(k,i) + rqacften(k,i) * dt_dyn
+
+         ! theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
+         
+         ! Update radiation pointer
+         qcrad_p(i,k,j) = qc(k,i)
+         qvrad_p(i,k,j) = qv(k,i)
+
+         if (i == 800) then
+            write(*,*) 'cloud_to_MPAS', k, qaprog(k,i), rqacften(k,i), rqccften(k,i), rqicften(k,i), rthcften(k,i)
+         endif
+
       enddo
       enddo
       enddo
@@ -331,7 +371,7 @@
 !input arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
- type(mpas_pool_type),intent(in)   :: state
+ type(mpas_pool_type),intent(inout)   :: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
  integer,intent(in):: its,ite
@@ -387,8 +427,9 @@
       call mpas_timer_stop('cal_mynncld')
 
     case("cld_fraction_prognostic")
-      call mpas_timer_start('cal_prognostic_cldfrac')
-      call cal_prognostic_cldfrac(t_p,pres_p,rho_p,qvrad_p,qcrad_p,its,ite)
+       call mpas_timer_start('cal_prognostic_cldfrac')
+      call cal_prognostic_cldfrac(qa=qaprog_p, qaten=rqacften_p, qcten=rqccften_p, qiten=rqicften_p, tten=rthcften_p, &
+           temp=t_p, pres=pres_p, rho=rho_p, w=w_p, qv=qvrad_p, qc=qcrad_p, qi=qirad_p, dt=dt_dyn, its=its, ite=ite)
       call mpas_timer_stop('cal_prognostic_cldfrac')
 
     case default
@@ -396,7 +437,7 @@
  end select cld_fraction_select
 
 !copy local arrays to MPAS grid:
- call cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
+ call cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
 
 !call mpas_log_write('--- end subroutine driver_cloudiness.')
 
@@ -574,38 +615,33 @@
  end subroutine cal_mynncld
 
 !=================================================================================================================
- subroutine cal_prognostic_cldfrac(temp,pres,rho,qv,qc,its,ite)
+ subroutine cal_prognostic_cldfrac(qa,qaten,qcten,qiten,tten,temp,pres,rho,w,qv,qc,qi,dt,its,ite)
 !=================================================================================================================
-
 !input arguments:
  integer,intent(in):: its,ite
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: temp,pres,rho
+ real(kind=RKIND),intent(in):: dt
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qiten
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi
+ real(kind=RKIND),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: qa,qaten,qcten,tten
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: temp,pres,rho,w
 
- do j = jts,jte
- do k = kts,kte
- do i = its,ite
+!local variables:
+ integer:: i,j,k
 
-            ! tempc = temp(k) - 273.15
-            ! qvs(k) = rslf(pres(k), temp(k))
-            ! delqvs(k) = max(0.0, rslf(pres(k), 273.15)-qv(k))
-            ! if (tempc .le. 0.0) then
-            !     qvsi(k) = rsif(pres(k), temp(k))
-            ! else
-            !     qvsi(k) = qvs(k)
-            ! endif
-            ! satw(k) = qv(k)/qvs(k)
-            ! sati(k) = qv(k)/qvsi(k)
-            ! ssatw(k) = satw(k) - 1.
-            ! ssati(k) = sati(k) - 1.
-            ! if (abs(ssatw(k)).lt. eps) ssatw(k) = 0.0
-            ! if (abs(ssati(k)).lt. eps) ssati(k) = 0.0
-            ! ocp(k) = 1./(cp2*(1.+0.887*qv(k)))
-            ! lvap(k) = lvap0 + (2106.0 - 4218.0)*tempc
+do j = jts,jte
+do i = its,ite
 
- enddo
- enddo
- enddo
+!    write(*,*) 'idim, jdim, kdim', ite, jte, kte
+   call cldfrac_driver(i=i, j=j, kts=kts, kte=kte, dt=dt, &
+        temp=temp(i,:,j), pres=pres(i,:,j), rho=rho(i,:,j), w=w(i,:,j), &
+        qa=qa(i,:,j), qv=qv(i,:,j), qc=qc(i,:,j), qi=qi(i,:,j), &
+        qaten=qaten(i,:,j), qcten=qcten(i,:,j), qiten=qiten(i,:,j), tten=tten(i,:,j))
+
+!  subroutine subgrid_scale_liquid_clouds(kts, kte, no_micro, l_qc, dt, temp, rho, pres, lvap, ocp, qvs, w1d, lw1d, &
+!       qa, qv, rc, nc, rr, prw_sgi, prw_sgb, prw_sge)
+
+enddo
+enddo
 
  end subroutine cal_prognostic_cldfrac
 !=================================================================================================================
