@@ -439,8 +439,9 @@
 
     case("cld_fraction_prognostic")
        call mpas_timer_start('cal_prognostic_cldfrac')
-      call cal_prognostic_cldfrac(qa=qaprog_p, qaten=rqacften_p, qcten=rqccften_p, qiten=rqicften_p, tten=rthcften_p, &
-           temp=t_p, pres=pres_p, rho=rho_p, w=w_p, qv=qvrad_p, qc=qcrad_p, qi=qirad_p, dt=dt_dyn, its=its, ite=ite)
+       call cal_prognostic_cldfrac(qa=qaprog_p, qaten=rqacften_p, qcten=rqccften_p, qiten=rqicften_p, &
+            thten=rthcften_p, temp=t_p, pres=pres_p, rho=rho_p, w=w_p, qv=qvrad_p, qc=qcrad_p, &
+            qi=qirad_p, dt=dt_dyn, its=its, ite=ite)
       call mpas_timer_stop('cal_prognostic_cldfrac')
 
     case default
@@ -626,14 +627,14 @@
  end subroutine cal_mynncld
 
 !=================================================================================================================
- subroutine cal_prognostic_cldfrac(qa,qaten,qcten,qiten,tten,temp,pres,rho,w,qv,qc,qi,dt,its,ite)
+ subroutine cal_prognostic_cldfrac(qa,qaten,qcten,qiten,thten,temp,pres,rho,w,qv,qc,qi,dt,its,ite)
 !=================================================================================================================
 !input arguments:
  integer,intent(in):: its,ite
  real(kind=RKIND),intent(in):: dt
  real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qiten
  real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi
- real(kind=RKIND),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: qa,qaten,qcten,tten
+ real(kind=RKIND),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: qa,qaten,qcten,thten
  real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: temp,pres,rho,w
 
 !local variables:
@@ -646,10 +647,7 @@ do i = its,ite
    call cldfrac_driver(i=i, j=j, kts=kts, kte=kte, dt=dt, &
         temp=temp(i,:,j), pres=pres(i,:,j), rho=rho(i,:,j), w=w(i,:,j), &
         qa=qa(i,:,j), qv=qv(i,:,j), qc=qc(i,:,j), qi=qi(i,:,j), &
-        qaten=qaten(i,:,j), qcten=qcten(i,:,j), qiten=qiten(i,:,j), tten=tten(i,:,j))
-
-!  subroutine subgrid_scale_liquid_clouds(kts, kte, no_micro, l_qc, dt, temp, rho, pres, lvap, ocp, qvs, w1d, lw1d, &
-!       qa, qv, rc, nc, rr, prw_sgi, prw_sgb, prw_sge)
+        qaten=qaten(i,:,j), qcten=qcten(i,:,j), qiten=qiten(i,:,j), thten=thten(i,:,j))
 
 enddo
 enddo
