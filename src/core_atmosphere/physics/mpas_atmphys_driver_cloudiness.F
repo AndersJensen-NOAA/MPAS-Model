@@ -11,7 +11,7 @@
  use mpas_pool_routines
  use mpas_timer, only : mpas_timer_start, mpas_timer_stop
 
- use mpas_atmphys_constants, only: ep_2
+ use mpas_atmphys_constants, only: ep_2, rvord
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
  use module_mp_tempo_cldfrac, only: cldfrac_driver
@@ -295,7 +295,7 @@
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
  character(len=StrKIND),pointer:: radt_cld_scheme
  integer,pointer:: index_qaprog, index_qv, index_qc
- real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv
+ real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv, theta_m
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
  real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften
 
@@ -317,6 +317,7 @@
    case("cld_fraction_prognostic")
 
       call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
+      call mpas_pool_get_array(state,'theta_m',theta_m,1)
       call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
       call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
       call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
@@ -325,30 +326,40 @@
       call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
       call mpas_pool_get_dimension(state,'index_qc',index_qc)
       call mpas_pool_get_dimension(state,'index_qv',index_qv)
+
       qaprog   => scalars(index_qaprog,:,:)
       qc   => scalars(index_qc,:,:)
       qv   => scalars(index_qv,:,:)
-      
+
+      ! State update from prognostic cloud fraction
       do j = jts,jte
       do k = kts,kte
       do i = its,ite
+         qc_p(i,k,j) = qc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn
+         qv_p(i,k,j) = qv_p(i,k,j) - rqccften_p(i,k,j)*dt_dyn
+         qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
+         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
+
+         ! Update radiation pointers
+         qcrad_p(i,k,j) = qc_p(i,k,i)
+         qvrad_p(i,k,j) = qv_p(i,k,i)
+      enddo
+      enddo
+      enddo
+
+      ! Cloud Fraction to MPAS
+      do j = jts,jte
+      do k = kts,kte
+      do i = its,ite
+         qv(k,i) = qv_p(i,k,j)
+         qc(k,i) = qc_p(i,k,j)
          qaprog(k,i) = qaprog_p(i,k,j)
          rqccften(k,i) = rqccften_p(i,k,j)
          rnccften(k,i) = rnccften_p(i,k,j)
          rqicften(k,i) = rqicften_p(i,k,j)
          rqacften(k,i) = rqacften_p(i,k,j)
          rthcften(k,i) = rthcften_p(i,k,j)
-
-         ! Prognostic cloud fraction state update
-         qc(k,i) = qc(k,i) + rqccften(k,i) * dt_dyn
-         qv(k,i) = qv(k,i) - rqccften(k,i) * dt_dyn
-         qaprog(k,i) = qaprog(k,i) + rqacften(k,i) * dt_dyn
-
-         ! theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
-         
-         ! Update radiation pointer
-         qcrad_p(i,k,j) = qc(k,i)
-         qvrad_p(i,k,j) = qv(k,i)
+         theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
 
          if (i == 800) then
             write(*,*) 'cloud_to_MPAS', k, qaprog(k,i), rqacften(k,i), rqccften(k,i), rqicften(k,i), rthcften(k,i)
