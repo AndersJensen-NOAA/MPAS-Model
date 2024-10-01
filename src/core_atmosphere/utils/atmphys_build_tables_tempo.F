@@ -6,12 +6,19 @@
 ! distributed with this code, or at http://mpas-dev.github.com/license.html
 !
 !=================================================================================================================
- module atmphys_build_tables_thompson
- use module_mp_thompson
-
+ module atmphys_build_tables_tempo
+ use module_mp_tempo, only : tempo_init
+ use module_mp_tempo_utils, only : qi_aut_qs, freezeH2O, qr_acr_qs, qr_acr_qg
+ use module_mp_tempo_params, only : dimNRHG, build_hail_aware_table, &
+      tcg_racg, tmr_racg, tcr_gacr, tnr_racg, tnr_gacr, &
+      tcs_racs1, tmr_racs1, tcs_racs2, tmr_racs2, tcr_sacr1, tms_sacr1, tcr_sacr2, tms_sacr2, &
+      tnr_racs1, tnr_racs2, tnr_sacr1, tnr_sacr2, &
+      tpi_qrfz, tni_qrfz, tpg_qrfz, tnr_qrfz, tpi_qcfz, tni_qcfz, &
+      tpi_ide, tps_iaus, tni_iaus
+ 
  implicit none
  private
- public:: build_tables_thompson
+ public:: build_tables_tempo_mp
 
 !builds the files containing the look-up tables for the Thompson cloud microphysics scheme.
 !Laura D. Fowler (send comments to laura@ucar.edu).
@@ -22,7 +29,7 @@
 
 
 !=================================================================================================================
- subroutine build_tables_thompson
+ subroutine build_tables_tempo_mp
 !=================================================================================================================
 
  use mpas_io_units, only : mpas_new_unit, mpas_release_unit
@@ -36,7 +43,7 @@
 !--- partial initialization before building the look-up tables:
 !--- AAJ This needs a hail_aware_flag defined in module_mp_thompson_params
 
- call thompson_init(l_mp_tables)
+ call tempo_init(l_mp_tables=l_mp_tables, hail_aware_flag=build_hail_aware_table)
 
  call mpas_new_unit(mp_unit, unformatted = .true.)
 
@@ -48,11 +55,11 @@
     call print_parallel_mesg('MP_THOMPSON_QRacrQG_DATA.DBL')
     return
  end if
- call qr_acr_qg
+ call qr_acr_qg(dimNRHG)
  write(mp_unit) tcg_racg
  write(mp_unit) tmr_racg
  write(mp_unit) tcr_gacr
- write(mp_unit) tmg_gacr
+! write(mp_unit) tmg_gacr
  write(mp_unit) tnr_racg
  write(mp_unit) tnr_gacr
  close(unit=mp_unit)
@@ -129,7 +136,7 @@
  write(0,*) 'the ''atmosphere'' core.'
  write(0,*) '*******************************************************************************'
 
- end subroutine build_tables_thompson
+ end subroutine build_tables_tempo_mp
 
 
 !=================================================================================================================
@@ -148,5 +155,5 @@
  end subroutine print_parallel_mesg
 
 !=================================================================================================================
- end module atmphys_build_tables_thompson 
+ end module atmphys_build_tables_tempo
 !=================================================================================================================
