@@ -49,12 +49,22 @@
 
 !--- building look-up table for rain collecting graupel:
  write(0,*)
- write(0,*) '--- building MP_THOMPSON_QRacrQG_DATA.DBL'
- open(unit=mp_unit,file='MP_THOMPSON_QRacrQG_DATA.DBL',form='unformatted',status='new',iostat=istatus)
- if (istatus /= 0) then
-    call print_parallel_mesg('MP_THOMPSON_QRacrQG_DATA.DBL')
-    return
- end if
+ if (build_hail_aware_table) then
+    write(0,*) '--- building MP_TEMPO_HAILAWARE_QRacrQG_DATA.DBL'
+    open(unit=mp_unit,file='MP_TEMPO_HAILAWARE_QRacrQG_DATA.DBL',form='unformatted',status='new',iostat=istatus)
+    if (istatus /= 0) then
+       call print_parallel_mesg('MP_TEMPO_HAILAWARE_QRacrQG_DATA.DBL')
+       return
+    end if
+ else
+    write(0,*) '--- building MP_TEMPO_QRacrQG_DATA.DBL'
+    open(unit=mp_unit,file='MP_TEMPO_QRacrQG_DATA.DBL',form='unformatted',status='new',iostat=istatus)
+    if (istatus /= 0) then
+       call print_parallel_mesg('MP_TEMPO_QRacrQG_DATA.DBL')
+       return
+    end if
+ endif
+
  call qr_acr_qg(dimNRHG)
  write(mp_unit) tcg_racg
  write(mp_unit) tmr_racg
@@ -66,10 +76,10 @@
 
 !--- building look-up table for rain collecting snow:
  write(0,*)
- write(0,*) '--- building MP_THOMPSON_QRacrQS_DATA.DBL'
- open(unit=mp_unit,file='MP_THOMPSON_QRacrQS_DATA.DBL',form='unformatted',status='new',iostat=istatus)
+ write(0,*) '--- building MP_TEMPO_QRacrQS_DATA.DBL'
+ open(unit=mp_unit,file='MP_TEMPO_QRacrQS_DATA.DBL',form='unformatted',status='new',iostat=istatus)
  if (istatus /= 0) then
-    call print_parallel_mesg('MP_THOMPSON_QRacrQS_DATA.DBL')
+    call print_parallel_mesg('MP_TEMPO_QRacrQS_DATA.DBL')
     return
  end if
  call qr_acr_qs
@@ -89,10 +99,10 @@
 
 !--- building look-up table for freezing of cloud droplets:
  write(0,*)
- write(0,*) '--- building MP_THOMPSON_freezeH2O_DATA.DBL'
- open(unit=mp_unit,file='MP_THOMPSON_freezeH2O_DATA.DBL',form='unformatted',status='new',iostat=istatus)
+ write(0,*) '--- building MP_TEMPO_freezeH2O_DATA.DBL'
+ open(unit=mp_unit,file='MP_TEMPO_freezeH2O_DATA.DBL',form='unformatted',status='new',iostat=istatus)
  if (istatus /= 0) then
-    call print_parallel_mesg('MP_THOMPSON_freezeH2O_DATA.DBL')
+    call print_parallel_mesg('MP_TEMPO_freezeH2O_DATA.DBL')
     return
  end if
  call freezeH2O
@@ -106,10 +116,10 @@
  
 !--- building look-up table for autoconversion of cloud ice to snow:
  write(0,*)
- write(0,*) '--- building MP_THOMPSON_QIautQS_DATA.DBL'
- open(unit=mp_unit,file='MP_THOMPSON_QIautQS_DATA.DBL',form='unformatted',status='new',iostat=istatus)
+ write(0,*) '--- building MP_TEMPO_QIautQS_DATA.DBL'
+ open(unit=mp_unit,file='MP_TEMPO_QIautQS_DATA.DBL',form='unformatted',status='new',iostat=istatus)
  if (istatus /= 0) then
-    call print_parallel_mesg('MP_THOMPSON_QIautQS_DATA.DBL')
+    call print_parallel_mesg('MP_TEMPO_QIautQS_DATA.DBL')
     return
  end if
  call qi_aut_qs
@@ -126,10 +136,10 @@
  write(0,*) 'To preserve these tables when running ''make clean'', please copy the following'
  write(0,*) 'files to the src/core_atmosphere/physics/physics_wrf/files/ directory:'
  write(0,*)
- write(0,*) '  MP_THOMPSON_QRacrQG_DATA.DBL'
- write(0,*) '  MP_THOMPSON_QRacrQS_DATA.DBL'
- write(0,*) '  MP_THOMPSON_freezeH2O_DATA.DBL'
- write(0,*) '  MP_THOMPSON_QIautQS_DATA.DBL'
+ write(0,*) '  MP_TEMPO_QRacrQG_DATA.DBL'
+ write(0,*) '  MP_TEMPO_QRacrQS_DATA.DBL'
+ write(0,*) '  MP_TEMPO_freezeH2O_DATA.DBL'
+ write(0,*) '  MP_TEMPO_QIautQS_DATA.DBL'
  write(0,*)
  write(0,*) 'Tables in the src/core_atmosphere/physics/physics_wrf/files/ directory '
  write(0,*) 'will be automatically linked to the top-level MPAS directory when compiling'

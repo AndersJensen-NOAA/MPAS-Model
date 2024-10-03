@@ -33,9 +33,8 @@
  integer:: mp_unit
 
 !-----------------------------------------------------------------------------------------------------------------
-!--- partial initialization before building the look-up tables:
-!--- AAJ This needs a hail_aware_flag defined in module_mp_thompson_params
 
+!--- partial initialization before building the look-up tables:
  call thompson_init(l_mp_tables)
 
  call mpas_new_unit(mp_unit, unformatted = .true.)

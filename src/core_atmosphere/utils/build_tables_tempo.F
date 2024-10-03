@@ -13,7 +13,7 @@
 
  write(0,*) ' '
  write(0,*) 'Constructing tables for TEMPO cloud microphysics scheme.'
- write(0,*) 'This may take an hour with an optimized build...'
+ write(0,*) 'This may take 45 minutes with an optimized build...'
 
  call build_tables_tempo_mp
 
