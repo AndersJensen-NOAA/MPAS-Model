@@ -16,7 +16,7 @@
 
  use mpas_atmphys_utilities
  use module_mp_tempo_params, only: ntb_arc,ntb_arw,ntb_art,ntb_arr,ntb_ark,tnccn_act, &
-      naCCN1,naCCN0,naIN0,naIN1
+      naCCN1,naCCN0,naIN0,naIN1,nwfa_default,aero_max
                               
  implicit none
  private
@@ -58,7 +58,7 @@
  integer:: iCell, k
 
  real(kind=RKIND):: max_test
- real(kind=RKIND):: airmass
+ real(kind=RKIND):: airmass, deltaz
  real(kind=RKIND):: h_01
  real(kind=RKIND):: niIN3,niCCN3
  real(kind=RKIND):: nifa_max,nifa_min,global_nifa_max,global_nifa_min
@@ -174,9 +174,16 @@
 
  k = 1
  do iCell = 1, nCellsSolve
-    airmass = rho_zz(k,iCell)*zz(k,iCell)
-    airmass = airmass*(zgrid(k+1,iCell)-zgrid(k,iCell))*areaCell(iCell) ! (in kg)
-    nwfa2d(iCell) = nwfa(k,iCell)*0.000196*airmass*0.5e-10
+    ! airmass = rho_zz(k,iCell)*zz(k,iCell)
+    ! airmass = airmass*(zgrid(k+1,iCell)-zgrid(k,iCell))*areaCell(iCell) ! (in kg)
+    ! nwfa2d(iCell) = nwfa(k,iCell)*0.000196*airmass*0.5e-10
+
+    deltaz = zgrid(k+1,iCell)-zgrid(k,iCell)
+    if (deltaz < 9.0) then
+       deltaz = 9.0
+    endif
+    nwfa2d(iCell) = max(nwfa_default, min(aero_max, nwfa(k,iCell))) * &
+         0.000196 * 50.0 / deltaz
     nifa2d(iCell) = 0._RKIND
 !   call mpas_log_write('$i $r $r $r',intArgs=(/iCell/),realArgs=(/airmass,nwfa2d(iCell),nifa2d(iCell)/))
  enddo
