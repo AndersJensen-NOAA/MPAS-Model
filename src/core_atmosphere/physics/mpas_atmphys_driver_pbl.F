@@ -95,7 +95,6 @@
 !local pointers:
  character(len=StrKIND),pointer:: pbl_scheme
 
- integer :: i, j
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
@@ -110,6 +109,7 @@
  if(.not.allocated(znt_p)  ) allocate(znt_p(ims:ime,jms:jme)  )
  if(.not.allocated(uoce_p) ) allocate(uoce_p(ims:ime,jms:jme) )
  if(.not.allocated(voce_p) ) allocate(voce_p(ims:ime,jms:jme) )
+ if(.not.allocated(psfc_p) ) allocate(psfc_p(ims:ime,jms:jme) )
 
  !tendencies:
  if(.not.allocated(rublten_p) ) allocate(rublten_p(ims:ime,kms:kme,jms:jme) )
@@ -130,16 +130,16 @@
 
     case("bl_ysu")
        !from surface-layer model:
-       if(.not.allocated(br_p)          ) allocate(br_p(ims:ime,jms:jme)                )
-       if(.not.allocated(ctopo_p)       ) allocate(ctopo_p(ims:ime,jms:jme)             )
-       if(.not.allocated(ctopo2_p)      ) allocate(ctopo2_p(ims:ime,jms:jme)            )
-       if(.not.allocated(delta_p)       ) allocate(delta_p(ims:ime,jms:jme)             )
-       if(.not.allocated(psih_p)        ) allocate(psih_p(ims:ime,jms:jme)              )
-       if(.not.allocated(psim_p)        ) allocate(psim_p(ims:ime,jms:jme)              )
-       if(.not.allocated(u10_p)         ) allocate(u10_p(ims:ime,jms:jme)               )
-       if(.not.allocated(v10_p)         ) allocate(v10_p(ims:ime,jms:jme)               )
-       if(.not.allocated(exch_p)        ) allocate(exch_p(ims:ime,kms:kme,jms:jme)      )
-       if(.not.allocated(wstar_p)       ) allocate(wstar_p(ims:ime,jms:jme)             )
+       if(.not.allocated(br_p)    ) allocate(br_p(ims:ime,jms:jme)          )
+       if(.not.allocated(ctopo_p) ) allocate(ctopo_p(ims:ime,jms:jme)       )
+       if(.not.allocated(ctopo2_p)) allocate(ctopo2_p(ims:ime,jms:jme)      )
+       if(.not.allocated(delta_p) ) allocate(delta_p(ims:ime,jms:jme)       )
+       if(.not.allocated(psih_p)  ) allocate(psih_p(ims:ime,jms:jme)        )
+       if(.not.allocated(psim_p)  ) allocate(psim_p(ims:ime,jms:jme)        )
+       if(.not.allocated(u10_p)   ) allocate(u10_p(ims:ime,jms:jme)         )
+       if(.not.allocated(v10_p)   ) allocate(v10_p(ims:ime,jms:jme)         )
+       if(.not.allocated(exch_p)  ) allocate(exch_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(wstar_p) ) allocate(wstar_p(ims:ime,jms:jme)       )
 
     case("bl_mynn")
        if(.not.allocated(kbl_plume_p) ) allocate(kbl_plume_p(ims:ime,jms:jme)         )
@@ -190,8 +190,6 @@
        if(.not.allocated(pattern_spp_pbl)) allocate(pattern_spp_pbl(ims:ime,kms:kme,jms:jme))
        
     case("bl_mynnedmf") !GSL version
-       if(.not.allocated(kbl_plume_p)   ) allocate(kbl_plume_p(ims:ime,jms:jme)         )
-
        if(.not.allocated(dx_p)          ) allocate(dx_p(ims:ime,jms:jme)                )
        if(.not.allocated(ch_p)          ) allocate(ch_p(ims:ime,jms:jme)                )
        if(.not.allocated(qsfc_p)        ) allocate(qsfc_p(ims:ime,jms:jme)              )
@@ -206,7 +204,6 @@
        if(.not.allocated(tsq_p)         ) allocate(tsq_p(ims:ime,kms:kme,jms:jme)       )
        if(.not.allocated(qkeadv_p)      ) allocate(qkeadv_p(ims:ime,kms:kme,jms:jme)    )
        if(.not.allocated(elpbl_p)       ) allocate(elpbl_p(ims:ime,kms:kme,jms:jme)     )
-       if(.not.allocated(tkepbl_p)      ) allocate(tkepbl_p(ims:ime,kms:kme,jms:jme)    )
        if(.not.allocated(sh3d_p)        ) allocate(sh3d_p(ims:ime,kms:kme,jms:jme)      )
        if(.not.allocated(sm3d_p)        ) allocate(sm3d_p(ims:ime,kms:kme,jms:jme)      )
        if(.not.allocated(dqke_p)        ) allocate(dqke_p(ims:ime,kms:kme,jms:jme)      )
@@ -230,7 +227,6 @@
 
        !additional tendencies:
        if(.not.allocated(rqsblten_p)    ) allocate(rqsblten_p(ims:ime,kms:kme,jms:jme)  )
-       if(.not.allocated(rniblten_p)    ) allocate(rniblten_p(ims:ime,kms:kme,jms:jme)  )
        if(.not.allocated(rncblten_p)    ) allocate(rncblten_p(ims:ime,kms:kme,jms:jme)  )
        if(.not.allocated(rniblten_p)    ) allocate(rniblten_p(ims:ime,kms:kme,jms:jme)  )
        if(.not.allocated(rnifablten_p)  ) allocate(rnifablten_p(ims:ime,kms:kme,jms:jme))
@@ -274,8 +270,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: pbl_scheme
 
- integer :: i, j, k
-!n-----------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_pbl_scheme',pbl_scheme)
 
@@ -289,7 +284,8 @@
  if(allocated(znt_p)  ) deallocate(znt_p  )
  if(allocated(uoce_p) ) deallocate(uoce_p )
  if(allocated(voce_p) ) deallocate(voce_p )
-
+ if(allocated(psfc_p) ) deallocate(psfc_p )
+      
  !tendencies:
  if(allocated(rublten_p) ) deallocate(rublten_p )
  if(allocated(rvblten_p) ) deallocate(rvblten_p )
@@ -309,16 +305,16 @@
 
     case("bl_ysu")
        !from surface-layer model:
-       if(allocated(br_p)          ) deallocate(br_p          )
-       if(allocated(ctopo_p)       ) deallocate(ctopo_p       )
-       if(allocated(ctopo2_p)      ) deallocate(ctopo2_p      )
-       if(allocated(delta_p)       ) deallocate(delta_p       )
-       if(allocated(psih_p)        ) deallocate(psih_p        )
-       if(allocated(psim_p)        ) deallocate(psim_p        )
-       if(allocated(u10_p)         ) deallocate(u10_p         )
-       if(allocated(v10_p)         ) deallocate(v10_p         )
-       if(allocated(exch_p)        ) deallocate(exch_p        )
-       if(allocated(wstar_p)       ) deallocate(wstar_p       )
+       if(allocated(br_p)    ) deallocate(br_p    )
+       if(allocated(ctopo_p) ) deallocate(ctopo_p )
+       if(allocated(ctopo2_p)) deallocate(ctopo2_p)
+       if(allocated(delta_p) ) deallocate(delta_p )
+       if(allocated(psih_p)  ) deallocate(psih_p  )
+       if(allocated(psim_p)  ) deallocate(psim_p  )
+       if(allocated(u10_p)   ) deallocate(u10_p   )
+       if(allocated(v10_p)   ) deallocate(v10_p   )
+       if(allocated(exch_p)  ) deallocate(exch_p  )
+       if(allocated(wstar_p) ) deallocate(wstar_p )
 
     case("bl_mynn")
        if(allocated(kbl_plume_p) ) deallocate(kbl_plume_p )
@@ -370,7 +366,6 @@
        if(allocated(pattern_spp_pbl)) deallocate(pattern_spp_pbl)
        
     case("bl_mynnedmf")
-       if(allocated(kbl_plume_p)   ) deallocate(kbl_plume_p   )
        if(allocated(dx_p)          ) deallocate(dx_p          )
        if(allocated(ch_p)          ) deallocate(ch_p          )
        if(allocated(qsfc_p)        ) deallocate(qsfc_p        )
@@ -385,7 +380,6 @@
        if(allocated(tsq_p)       ) deallocate(tsq_p       )
        if(allocated(qkeadv_p)    ) deallocate(qkeadv_p    )
        if(allocated(elpbl_p)     ) deallocate(elpbl_p     )
-       if(allocated(tkepbl_p)    ) deallocate(tkepbl_p    )
        if(allocated(sh3d_p)      ) deallocate(sh3d_p      )
        if(allocated(sm3d_p)      ) deallocate(sm3d_p      )
        if(allocated(dqke_p)      ) deallocate(dqke_p      )
@@ -453,7 +447,7 @@
  type(mpas_pool_type),intent(in):: diag_physics
  type(mpas_pool_type),intent(in):: sfc_input
  type(mpas_pool_type),intent(in):: tend_physics
-
+      
  integer,intent(in):: its,ite
 
 !local variables:
@@ -473,12 +467,11 @@
 !local pointers for MYNN scheme:
  real(kind=RKIND),pointer:: len_disp
  real(kind=RKIND),dimension(:),pointer  :: meshDensity
- real(kind=RKIND),dimension(:),pointer  :: ch,qsfc,qcg,skintemp,rmol
+ real(kind=RKIND),dimension(:),pointer  :: ch,qsfc,rmol,skintemp
  real(kind=RKIND),dimension(:,:),pointer:: cov,qke,qsq,tsq,sh3d,sm3d,tke_pbl,qke_adv,el_pbl
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qc_bl,qi_bl
  real(kind=RKIND),dimension(:,:),pointer:: edmf_a,edmf_ent,edmf_qc,edmf_qt,edmf_thl,edmf_w
  real(kind=RKIND),dimension(:,:),pointer:: sub_thl,sub_qv,det_thl,det_qv
- real(kind=RKIND),dimension(:,:),pointer:: rncblten,rniblten,rnifablten,rnwfablten
       
 !local pointers for MYJ scheme:
  real(kind=RKIND),dimension(:),pointer   :: chlowq,thz0,qz0,uz0,vz0,ct,akhs,akms,lh,mixht
@@ -494,7 +487,7 @@
  call mpas_pool_get_array(diag_physics,'ust' ,ust )
  call mpas_pool_get_array(diag_physics,'wspd',wspd)
  call mpas_pool_get_array(diag_physics,'znt' ,znt )
-
+      
  call mpas_pool_get_array(tend_physics,'rthratenlw',rthratenlw)
  call mpas_pool_get_array(tend_physics,'rthratensw',rthratensw)
 
@@ -664,7 +657,6 @@
        call mpas_pool_get_array(diag_physics,'qke_adv'   ,qke_adv   )
        call mpas_pool_get_array(diag_physics,'qsq'       ,qsq       )
        call mpas_pool_get_array(diag_physics,'tsq'       ,tsq       )
-       call mpas_pool_get_array(diag_physics,'tke_pbl'   ,tke_pbl   )
        call mpas_pool_get_array(diag_physics,'sh3d'      ,sh3d      )
        call mpas_pool_get_array(diag_physics,'sm3d'      ,sm3d      )
        call mpas_pool_get_array(diag_physics,'cldfrac_bl',cldfrac_bl)
@@ -698,7 +690,6 @@
           qke_p(i,k,j)      = qke(k,i)
           qsq_p(i,k,j)      = qsq(k,i)
           tsq_p(i,k,j)      = tsq(k,i)
-          tkepbl_p(i,k,j)   = tke_pbl(k,i)
           qkeadv_p(i,k,j)   = qke_adv(k,i)
           sh3d_p(i,k,j)     = sh3d(k,i)
           sm3d_p(i,k,j)     = sm3d(k,i)
@@ -731,7 +722,6 @@
        enddo
        enddo
        do i = its,ite
-          kbl_plume_p(i,j)  = 0
           maxwidthbl_p(i,j) = 0._RKIND
           maxmfbl_p(i,j)    = 0._RKIND
           zbl_plume_p(i,j)  = 0._RKIND
@@ -1032,7 +1022,6 @@
        call mpas_pool_get_array(diag_physics,'det_qv'    ,det_qv    )
 
        call mpas_pool_get_array(tend_physics,'rqsblten'  ,rqsblten  )
-       call mpas_pool_get_array(tend_physics,'rniblten'  ,rniblten  )
 
        do j = jts,jte
        do i = its,ite
@@ -1142,31 +1131,6 @@
        enddo
        enddo
 
-       if(f_ni) then
-          call mpas_pool_get_array(tend_physics,'rniblten',rniblten)
-          do j = jts,jte
-             do k = kts,kte
-                do i = its,ite
-                   rniblten(k,i) = rniblten_p(i,k,j)
-                enddo
-             enddo
-          enddo
-       endif
-       if(f_nc .and. f_nifa .and. f_nwfa) then
-          call mpas_pool_get_array(tend_physics,'rncblten'  ,rncblten  )
-          call mpas_pool_get_array(tend_physics,'rnifablten',rnifablten)
-          call mpas_pool_get_array(tend_physics,'rnwfablten',rnwfablten)
-          do j = jts,jte
-             do k = kts,kte
-                do i = its,ite
-                   rncblten(k,i)   = rncblten_p(i,k,j)
-                   rnifablten(k,i) = rnifablten_p(i,k,j)
-                   rnwfablten(k,i) = rnwfablten_p(i,k,j)
-                enddo
-             enddo
-          enddo
-       endif
-
     case default
 
  end select pbl_select
@@ -1192,10 +1156,10 @@
  pbl_select: select case (trim(pbl_scheme))
 
     case("bl_mynn")
-!       call mpas_log_write('--- enter subroutine bl_mynn_init:')
+!      call mpas_log_write('--- enter subroutine bl_mynn_init:')
        call bl_mynn_init(cp,cpv,cice,cliq,ep_1,ep_2,gravity,karman,P0,R_d,R_v,svp1,svp2,svp3,svpt0, &
                          xlf,xls,xlv,errmsg,errflg)
-!       call mpas_log_write('--- end subroutine bl_mynn_mpas_init:')
+!      call mpas_log_write('--- end subroutine bl_mynn_init:')
 
     case default
 
@@ -1218,7 +1182,7 @@
  type(mpas_pool_type),intent(inout):: sfc_input
  type(mpas_pool_type),intent(inout):: diag_physics
  type(mpas_pool_type),intent(inout):: tend_physics
-
+      
 !local pointers:
  logical,pointer:: config_do_DAcycling, &
                    config_do_restart,   &
@@ -1593,7 +1557,7 @@
                 qcw      = qc_p      , qci      = qi_p       , qcs      = qs_p       , &
                 qcr      = qr_p      , qcg      = qg_p       , u        = u_p        , &
                 v        = v_p       , rho      = rho_p      , tsk      = tsk_p      , &
-                qsfc     = qsfc_p    , chklowq   = chlowq_p   , thz0     = thz0_p     , &
+                qsfc     = qsfc_p    , chklowq  = chlowq_p   , thz0     = thz0_p     , &
                 qz0      = qz0_p     , uz0      = uz0_p      , vz0      = vz0_p      , &
                 lowlyr   = lowlyr_p  , xland    = xland_p    , sice     = xice_p     , &
                 snow     = snow_p    , tke_myj  = tkepbl_p   , exch_h   = kzh_p      , &
