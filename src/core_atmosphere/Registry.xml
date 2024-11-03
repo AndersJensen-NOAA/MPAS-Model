@@ -405,6 +405,7 @@
 		<package name="mp_tempo_in" description="parameterization of TEMPO cloud microphysics."/>
 		<package name="tempo_aerosolaware_in" description="variables for TEMPO with aerosol-aware microphysics."/>
 		<package name="tempo_hailaware_in" description="variables for TEMPO hail-aware microphysics."/>
+		<package name="tempo_cldfrac_in" description="variables for TEMPO prognostic cloud fraction."/>
                 <package name="mp_wsm6_in" description="parameterization of WSM6 cloud microphysics."/>
                 <package name="mp_nssl2m_in" description="parameterization of NSSL 2-moment microphysics."/>
                 <package name="nssl3m_in" description="variables for NSSL 3-moment microphysics."/>
@@ -1792,6 +1793,10 @@
                         <var name="nwfa" array_group="number" units="nb kg^{-1}"
                              description="Water-friendly aerosol number concentration"
                              packages="mp_thompson_aers_in;tempo_aerosolaware_in"/>
+
+			<var name="qaprog" array_group="passive" units=""
+                             description="Prognostic cloud fraction"
+                             packages="tempo_cldfrac_in"/>
                 </var_array>
 #endif
 
@@ -2183,6 +2188,10 @@
                         <var name="tend_nwfa" name_in_code="nwfa" array_group="number" units="nb m^{-3} s^{-1}"
                              description="Tendency of water-friendly aerosol number concentration multiplied by dry air density divided by d(zeta)/dz"
                              packages="mp_thompson_aers_in;tempo_aerosolaware_in"/>
+
+                        <var name="tend_qaprog" name_in_code="qaprog" array_group="passive" units="s^{-1}"
+                             description="Tendency of prognostic cloud fraction multiplied by dry air density divided by d(zeta)/dz"
+                             packages="tempo_cldfrac_in"/>
                 </var_array>
 #endif
         </var_struct>
@@ -2282,6 +2291,9 @@
                         <var name="lbc_nwfa" name_in_code="nwfa" array_group="number" packages="mp_thompson_aers_in;tempo_aerosolaware_in"
                              units="m^{-3} s^{-1}"
                              description="Lateral boundary tendency of water-friendly aerosol number concentration"/>
+
+                        <var name="lbc_qaprog" name_in_code="qaprog" array_group="passive" packages="tempo_cldfrac_in" units="s^{-1}"
+                             description="Lateral boundary tendency of Prognostic cloud fraction"/>
                 </var_array>
         </var_struct>
 
@@ -2450,6 +2462,11 @@
                      description="Logical flag to turn on/off prognostic graupel number concentration and rime density"
                      possible_values=".true. or .false."/>
 
+		<nml_option name="config_tempo_cldfrac" type="logical" default_value="false" in_defaults="false"
+		     units="-"
+                     description="Logical flag to turn on/off prognostic cloud fraction"
+                     possible_values=".true. or .false."/>
+
                 <nml_option name="config_nssl_moments" type="character" default_value="nssl2m" in_defaults="false"
                      units="-"
                      description="Whether to activate the 3moment version of NSSL"
@@ -2488,7 +2505,7 @@
                 <nml_option name="config_radt_cld_scheme" type="character" default_value="suite" in_defaults="false"
                      units="-"
                      description="configuration for calculation of horizontal cloud fraction"
-                     possible_values="`suite',`cld_fraction',`cld_incidence',`cld_fraction_thompson',`cld_fraction_mynn'"/>
+                     possible_values="`suite',`cld_fraction',`cld_incidence',`cld_fraction_thompson',`cld_fraction_mynn',`cld_tempo'"/>
 
                 <nml_option name="config_radt_lw_scheme" type="character" default_value="suite" in_defaults="false"
                      units="-"
@@ -3918,6 +3935,21 @@
 
                 <var name="rthratenlw" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
                      description="tendency of potential temperature due to long wave radiation"/>
+
+		<var name="rqccften" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                     description="tendency of cloud water mixing ratio due to cloud fraction scheme"/>
+
+		<var name="rnccften" type="real" dimensions="nVertLevels nCells Time" units="nb kg^{-1} s^{-1}"
+                     description="tendency of cloud number mixing ratio due to cloud fraction scheme"/>
+
+		<var name="rqicften" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                     description="tendency of cloud ice mixing ratio due to cloud fraction scheme"/>
+
+		<var name="rqacften" type="real" dimensions="nVertLevels nCells Time" units="s^{-1}"
+                     description="tendency of prognostic cloud fraction due to cloud fraction scheme"/>
+
+		<var name="rthcften" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="tendency of potential temperature due to cloud fraction scheme"/>
 #endif
         </var_struct>
 
