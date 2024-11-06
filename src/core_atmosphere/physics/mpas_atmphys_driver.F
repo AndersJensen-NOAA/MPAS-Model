@@ -130,6 +130,7 @@
                                  sfc_input
 
  logical,pointer:: config_frac_seaice
+ logical,pointer:: config_tempo_cldfrac
 
  character(len=StrKIND),pointer:: config_bucket_update,     &
                                   config_convection_scheme, &
@@ -138,7 +139,8 @@
                                   config_pbl_scheme,        &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme,    &
-                                  config_sfclayer_scheme
+                                  config_sfclayer_scheme,   &
+                                  config_microp_scheme
 
  logical, pointer:: config_oml1d
  real(kind=RKIND),pointer:: config_bucket_radt
@@ -169,13 +171,16 @@
  call mpas_pool_get_config(domain%configs,'config_bucket_update'    ,config_bucket_update    )
  call mpas_pool_get_config(domain%configs,'config_frac_seaice'      ,config_frac_seaice      ) 
  call mpas_pool_get_config(domain%configs,'config_oml1d'            ,config_oml1d            )
+ call mpas_pool_get_config(domain%configs,'config_microp_scheme'    ,config_microp_scheme    )
+ call mpas_pool_get_config(domain%configs,'config_tempo_cldfrac'    ,config_tempo_cldfrac    )
 
  if(config_convection_scheme .ne. 'off' .or. &
     config_lsm_scheme        .ne. 'off' .or. &
     config_pbl_scheme        .ne. 'off' .or. & 
     config_radt_lw_scheme    .ne. 'off' .or. &
     config_radt_sw_scheme    .ne. 'off' .or. &
-    config_sfclayer_scheme   .ne. 'off') then
+    config_sfclayer_scheme   .ne. 'off' .or. &
+    ((trim(config_microp_scheme) == 'mp_tempo') .and. (config_tempo_cldfrac))) then
 
  block => domain % blocklist
  do while(associated(block))
@@ -209,7 +214,7 @@
 !$OMP END PARALLEL DO
 
     !call to cloud scheme:
-    if(l_radtlw .or. l_radtsw) then
+    if(l_radtlw .or. l_radtsw .or. ((trim(config_microp_scheme) == 'mp_tempo') .and. (config_tempo_cldfrac))) then
        call allocate_cloudiness(block%configs)
 !$OMP PARALLEL DO
        do thread=1,nThreads
@@ -256,8 +261,10 @@
      endif
 
     !deallocate all radiation arrays:
-    if(config_radt_sw_scheme.ne.'off' .or. config_radt_lw_scheme.ne.'off') &
+     if(config_radt_sw_scheme.ne.'off' .or. config_radt_lw_scheme.ne.'off' .or. &
+          ((trim(config_microp_scheme) == 'mp_tempo') .and. (config_tempo_cldfrac))) then
        call deallocate_cloudiness(block%configs)
+    endif
     if(config_radt_sw_scheme.ne.'off') call deallocate_radiation_sw(block%configs)
     if(config_radt_lw_scheme.ne.'off') call deallocate_radiation_lw(block%configs)
 
