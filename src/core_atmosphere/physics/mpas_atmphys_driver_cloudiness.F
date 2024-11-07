@@ -14,6 +14,7 @@
  use mpas_atmphys_constants, only: ep_2, rvord
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
+ use module_mp_tempo_cldfrac, only: tempo_cldfrac_driver
  
  implicit none
  private
@@ -466,6 +467,15 @@
                        its,  ite , jts , jte , kts , kte  )
       call mpas_timer_stop('cal_mynncld')
 
+    case("cld_tempo")
+       call mpas_timer_start('calc_tempo_cldfrac')
+       call calc_tempo_cldfrac(qa    = qaprog_p , qv    = qvrad_p , qc  = qcrad_p , qi = qirad_p , &
+                               temp  = t_p      , pres  = pres_p  , rho = rho_p   , w  = w_p ,     &
+                               qaten = rqacften_p , qcten = rqccften_p , qiten = rqicften_p ,      &
+                               thten = rthcften_p ,                                                &
+                               dt = dt_dyn , its = its , ite = ite)
+       call mpas_timer_stop('calc_tempo_cldfrac')
+
     case default
 
  end select cld_fraction_select
@@ -620,6 +630,35 @@
  enddo
 
  end subroutine calc_cldfraction
+
+!=================================================================================================================
+ subroutine calc_tempo_cldfrac(qa,qv,qc,qi,temp,pres,rho,w,qaten,qcten,qiten,thten,dt,its,ite)
+!=================================================================================================================
+
+!input arguments:
+ integer,intent(in):: its,ite
+ real(kind=RKIND),intent(in):: dt
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qiten
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi
+ real(kind=RKIND),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: qa,qaten,qcten,thten
+ real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: temp,pres,rho,w
+
+!local variables:
+ integer:: i,j,k
+
+ do j = jts,jte
+ do i = its,ite
+
+    call tempo_cldfrac_driver(i=i, j=j, kts=kts, kte=kte, dt=dt,         &
+         temp=temp(i,:,j), pres=pres(i,:,j), rho=rho(i,:,j), w=w(i,:,j), &
+         qa=qa(i,:,j), qv=qv(i,:,j), qc=qc(i,:,j), qi=qi(i,:,j),         &
+         qaten=qaten(i,:,j), qcten=qcten(i,:,j), qiten=qiten(i,:,j),     &
+         thten=thten(i,:,j))
+
+ enddo
+ enddo
+
+end subroutine calc_tempo_cldfrac
 
 !=================================================================================================================
  subroutine cal_mynncld(cldfrac,qc,qi,qc_bl,qi_bl,its,ite,jts,jte,kts,kte)
