@@ -154,7 +154,7 @@
  end subroutine deallocate_cloudiness
 
 !=================================================================================================================
- subroutine cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -164,10 +164,12 @@
 !input and inout arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
+ type(mpas_pool_type),intent(in)   :: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -276,14 +278,19 @@
  end subroutine cloudiness_from_MPAS
 
 !=================================================================================================================
- subroutine cloudiness_to_MPAS(diag_physics,its,ite)
+ subroutine cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
 !=================================================================================================================
 
 !input arguments:
  integer,intent(in):: its,ite
 
+!input arguments:
+ type(mpas_pool_type),intent(in)   :: configs
+ type(mpas_pool_type),intent(in)   :: state
+
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -305,12 +312,13 @@
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine driver_cloudiness(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
  type(mpas_pool_type),intent(in)   :: configs
  type(mpas_pool_type),intent(in)   :: mesh
+ type(mpas_pool_type),intent(inout):: state
  type(mpas_pool_type),intent(in)   :: sfc_input
 
  integer,intent(in):: its,ite
@@ -318,6 +326,7 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+ type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
@@ -333,7 +342,7 @@
  call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
 
 !copy MPAS arrays to local arrays:
- call cloudiness_from_MPAS(itimestep,configs,mesh,diag_physics,sfc_input,its,ite)
+ call cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
 
  cld_fraction_select: select case (trim(radt_cld_scheme))
     case("cld_incidence")
@@ -379,7 +388,7 @@
  endif
 
 !copy local arrays to MPAS grid:
- call cloudiness_to_MPAS(diag_physics,its,ite)
+ call cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
 
 !call mpas_log_write('--- end subroutine driver_cloudiness.')
 
