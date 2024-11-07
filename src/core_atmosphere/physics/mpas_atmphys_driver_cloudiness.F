@@ -86,6 +86,15 @@
     case("cld_fraction_mynn")
        if(.not.allocated(qibl_p)) allocate(qibl_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
+
+    case("cld_tempo")
+       if(.not.allocated(w_p)) allocate(w_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rnccften_p)) allocate(rnccften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
+         if(.not.allocated(rthcften_p)) allocate(rthcften_p(ims:ime,kms:kme,jms:jme))
     case default
 
  end select cld_fraction_select
@@ -121,9 +130,17 @@
  cld_fraction_select: select case (trim(radt_cld_scheme))
 
     case("cld_fraction_mynn")
-
        if(allocated(qibl_p)) deallocate(qibl_p)
        if(allocated(qcbl_p)) deallocate(qcbl_p)
+
+    case("cld_tempo")
+       if(allocated(w_p)) deallocate(w_p)
+       if(allocated(qaprog_p)) deallocate(qaprog_p)
+       if(allocated(rqccften_p)) deallocate(rqccften_p)
+       if(allocated(rnccften_p)) deallocate(rnccften_p)
+       if(allocated(rqicften_p)) deallocate(rqicften_p)
+       if(allocated(rqacften_p)) deallocate(rqacften_p)
+       if(allocated(rthcften_p)) deallocate(rthcften_p)
     case default
 
  end select cld_fraction_select
