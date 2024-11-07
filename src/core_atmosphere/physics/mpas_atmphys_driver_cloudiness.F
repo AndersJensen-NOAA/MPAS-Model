@@ -11,7 +11,7 @@
  use mpas_pool_routines
  use mpas_timer, only : mpas_timer_start, mpas_timer_stop
 
- use mpas_atmphys_constants, only: ep_2
+ use mpas_atmphys_constants, only: ep_2, rvord
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
  
@@ -179,9 +179,14 @@
  real(kind=RKIND),dimension(:),pointer:: xland
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl,cldfrac_cu,qc_cu,qi_cu
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften,w
 
  character(len=StrKIND),pointer:: radt_cld_scheme
  character(len=StrKIND),pointer:: convection_scheme
+
+ integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -254,10 +259,34 @@
        enddo
        enddo
 
+    case("cld_tempo")
+         call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
+         call mpas_pool_get_array(state,'w',w,1) ! time level 1
+         call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+         call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+         call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
+         call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+         call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
+         call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
+
+         qaprog   => scalars(index_qaprog,:,:)
+         do j = jts,jte
+         do k = kts,kte
+         do i = its,ite
+            w_p(i,k,j) = w(k,i)
+            qaprog_p(i,k,j) = qaprog(k,i)
+            rqccften_p(i,k,j) = rqccften(k,i)
+            rnccften_p(i,k,j) = rnccften(k,i)
+            rqicften_p(i,k,j) = rqicften(k,i)
+            rqacften_p(i,k,j) = rqacften(k,i)
+            rthcften_p(i,k,j) = rthcften(k,i)
+         enddo
+         enddo
+         enddo
     case default
 
  end select cld_fraction_select  
- 
+
  if (convection_scheme=="cu_grell_freitas") then
     call mpas_pool_get_array(diag_physics,'cldfrac_cu',cldfrac_cu)
     call mpas_pool_get_array(diag_physics,'qi_cu',qi_cu)
@@ -295,7 +324,13 @@
 !local variables and pointers:
  integer:: i,j,k
 
+ character(len=StrKIND),pointer:: radt_cld_scheme
+ integer,pointer:: index_qaprog, index_qv, index_qc
+ real(kind=RKIND),dimension(:,:,:),pointer:: scalars
+
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
+ real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv, theta_m
+ real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -308,7 +343,62 @@
  enddo
  enddo
  enddo
- 
+
+ cld_fraction_select: select case (trim(radt_cld_scheme))
+
+   case("cld_tempo")
+      call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
+      call mpas_pool_get_array(state,'theta_m',theta_m,1)
+      call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+      call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
+      call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
+      call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
+      call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
+      call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
+      call mpas_pool_get_dimension(state,'index_qc',index_qc)
+      call mpas_pool_get_dimension(state,'index_qv',index_qv)
+
+      qaprog   => scalars(index_qaprog,:,:)
+      qc   => scalars(index_qc,:,:)
+      qv   => scalars(index_qv,:,:)
+
+      ! Update the state pointers from prognostic cloud fraction scheme tendencies
+      do j = jts,jte
+      do k = kts,kte
+      do i = its,ite
+         qc_p(i,k,j) = qc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn
+         qv_p(i,k,j) = qv_p(i,k,j) - rqccften_p(i,k,j)*dt_dyn
+         qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
+         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
+
+         ! Update radiation pointers
+         qcrad_p(i,k,j) = qc_p(i,k,i)
+         qvrad_p(i,k,j) = qv_p(i,k,i)
+         ! cldfrac_p(i,k,j) = qaprog(i,k,j)
+      enddo
+      enddo
+      enddo
+
+      ! Send update from cloud fraction scheme to MPAS
+      do j = jts,jte
+      do k = kts,kte
+      do i = its,ite
+         qv(k,i) = qv_p(i,k,j)
+         qc(k,i) = qc_p(i,k,j)
+         qaprog(k,i) = qaprog_p(i,k,j)
+         rqccften(k,i) = rqccften_p(i,k,j)
+         rnccften(k,i) = rnccften_p(i,k,j)
+         rqicften(k,i) = rqicften_p(i,k,j)
+         rqacften(k,i) = rqacften_p(i,k,j)
+         rthcften(k,i) = rthcften_p(i,k,j)
+         theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
+      enddo
+      enddo
+      enddo
+   case default
+
+ end select cld_fraction_select
+
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
