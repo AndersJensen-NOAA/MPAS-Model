@@ -335,6 +335,7 @@
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_array(diag_physics,'cldfrac',cldfrac)
+ call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
 
  do j = jts,jte
  do k = kts,kte
