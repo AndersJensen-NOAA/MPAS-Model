@@ -261,8 +261,8 @@
        enddo
 
     case("cld_tempo")
-         call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
-         call mpas_pool_get_array(state,'w',w,1) ! time level 1
+         call mpas_pool_get_array(state,'scalars',scalars) ! time level optional (use 1)
+         call mpas_pool_get_array(state,'w',w) ! time level optional (use 1)
          call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
          call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
          call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
@@ -349,16 +349,16 @@
  cld_fraction_select: select case (trim(radt_cld_scheme))
 
    case("cld_tempo")
-      call mpas_pool_get_array(state,'scalars',scalars,1) ! time level 1
-      call mpas_pool_get_array(state,'theta_m',theta_m,1)
+      call mpas_pool_get_array(state,'scalars',scalars) ! time level 1
+      call mpas_pool_get_array(state,'theta_m',theta_m)
       call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+      call mpas_pool_get_dimension(state,'index_qc',index_qc)
+      call mpas_pool_get_dimension(state,'index_qv',index_qv)
       call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
       call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
       call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
       call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
       call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
-      call mpas_pool_get_dimension(state,'index_qc',index_qc)
-      call mpas_pool_get_dimension(state,'index_qv',index_qv)
 
       qaprog   => scalars(index_qaprog,:,:)
       qc   => scalars(index_qc,:,:)
@@ -374,14 +374,14 @@
          th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
 
          ! Update radiation pointers
-         qcrad_p(i,k,j) = qc_p(i,k,i)
-         qvrad_p(i,k,j) = qv_p(i,k,i)
+         qcrad_p(i,k,j) = qc_p(i,k,j)
+         qvrad_p(i,k,j) = qv_p(i,k,j)
          ! cldfrac_p(i,k,j) = qaprog(i,k,j)
       enddo
       enddo
       enddo
 
-      ! Send update from cloud fraction scheme to MPAS
+      ! Send updates from cloud fraction scheme to MPAS
       do j = jts,jte
       do k = kts,kte
       do i = its,ite
@@ -646,6 +646,7 @@
 !local variables:
  integer:: i,j,k
 
+ call mpas_log_write('AAJ calc_tempo_cldfrac')
  do j = jts,jte
  do i = its,ite
 
