@@ -682,7 +682,6 @@
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
  real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
- real(kind=RKIND),dimension(:,:),pointer  :: rqccften,rqicften
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -889,16 +888,12 @@
 
              if (config_tempo_cldfrac) then
                 call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
-                call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
-                call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
                 qaprog   => scalars(index_qaprog,:,:)
 
                 do j = jts, jte
                 do k = kts, kte
                 do i = its, ite
                    qaprog_p(i,k,j) = qaprog(k,i)
-                   rqccften_p(i,k,j) = rqccften(k,i)
-                   rqicften_p(i,k,j) = rqicften(k,i)
                 enddo
                 enddo
                 enddo
@@ -1137,6 +1132,7 @@
  character(len=StrKIND),pointer:: mp_scheme
  character(len=StrKIND),pointer:: nssl_moments
  logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
+ logical,pointer:: config_tempo_cldfrac
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
  integer,pointer:: index_nc,index_ni,index_nr,index_nifa,index_nwfa
  integer,pointer:: index_qaprog
@@ -1161,7 +1157,6 @@
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
  real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
- real(kind=RKIND),dimension(:,:),pointer  :: rqccften,rqicften
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -1396,16 +1391,12 @@
 
              if (config_tempo_cldfrac) then
                 call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
-                call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
-                call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
                 qaprog   => scalars(index_qaprog,:,:)
 
                 do j = jts, jte
                 do k = kts, kte
                 do i = its, ite
                    qaprog(k,i) = qaprog_p(i,k,j)
-                   rqccften(k,i) = rqccften_p(i,k,j)
-                   rqicften(k,i) = rqicften_p(i,k,j)
                 enddo
                 enddo
                 enddo
