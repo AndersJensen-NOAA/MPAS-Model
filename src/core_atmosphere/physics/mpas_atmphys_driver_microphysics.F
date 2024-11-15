@@ -110,6 +110,7 @@
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
  logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
+ logical,pointer:: config_tempo_cldfrac
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -117,6 +118,7 @@
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
+ call mpas_pool_get_config(configs,'config_tempo_cldfrac',config_tempo_cldfrac)
 
 !sounding variables:
  if(.not.allocated(rho_p) ) allocate(rho_p(ims:ime,kms:kme,jms:jme) )
@@ -211,6 +213,10 @@
              if(.not.allocated(nwfa_p)  ) allocate(nwfa_p(ims:ime,kms:kme,jms:jme))
           endif
 
+         if (config_tempo_cldfrac) then
+             if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+         endif
+
        case("mp_nssl2m")
           if(.not.allocated(qh_p) ) allocate(qh_p(ims:ime,kms:kme,jms:jme))
           if(.not.allocated(nc_p) ) allocate(nc_p(ims:ime,kms:kme,jms:jme))
@@ -260,6 +266,7 @@
  character(len=StrKIND),pointer:: microp_scheme
  character(len=StrKIND),pointer:: nssl_moments
  logical,pointer:: config_tempo_hailaware, config_tempo_aerosolaware
+ logical,pointer:: config_tempo_cldfrac
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -267,6 +274,7 @@
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
+ call mpas_pool_get_config(configs,'config_tempo_cldfrac',config_tempo_cldfrac)
 
 !sounding variables:
  if(allocated(rho_p) ) deallocate(rho_p )
@@ -357,6 +365,10 @@
              if(allocated(nc_p)    ) deallocate(nc_p    )
              if(allocated(nifa_p)  ) deallocate(nifa_p  )
              if(allocated(nwfa_p)  ) deallocate(nwfa_p  )
+          endif
+
+          if (config_tempo_cldfrac) then
+             if(allocated(qaprog_p)) deallocate(qaprog_p)
           endif
 
        case("mp_nssl2m")
@@ -578,6 +590,7 @@
                      th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                      qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                      qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                     qa        = qaprog_p    , &
                      !! ng        = ng_p        , qb         = volg_p                                   , &
                      !! nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                      !! nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -600,6 +613,7 @@
                         th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                         qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                         qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                        qa        = qaprog_p    , &
                         !! ng        = ng_p        , qb         = volg_p                                   , &
                         nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                         nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -621,6 +635,7 @@
                         th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                         qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                         qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
+                        qa        = qaprog_p    , &
                         ng        = ng_p        , qb         = volg_p                                   , &
                         !! nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                         !! nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -646,6 +661,7 @@
                      qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                      qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
                      ng        = ng_p        , qb         = volg_p                                   , &
+                     qa        = qaprog_p    , &
                      nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                      nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
                      pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
