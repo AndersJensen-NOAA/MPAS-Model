@@ -370,7 +370,7 @@
       do i = its,ite
 !         qc_p(i,k,j) = qc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn
 !         qv_p(i,k,j) = qv_p(i,k,j) - rqccften_p(i,k,j)*dt_dyn
-!         qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
+         qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
 !         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
 
          ! Update radiation pointers
