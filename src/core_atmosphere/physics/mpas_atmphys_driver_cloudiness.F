@@ -89,13 +89,14 @@
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
 
     case("cld_tempo")
+       if(.not.allocated(nc_p)  ) allocate(nc_p(ims:ime,kms:kme,jms:jme)  )
        if(.not.allocated(w_p)) allocate(w_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(rnccften_p)) allocate(rnccften_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
-         if(.not.allocated(rthcften_p)) allocate(rthcften_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rnccften_p)) allocate(rnccften_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
+       if(.not.allocated(rthcften_p)) allocate(rthcften_p(ims:ime,kms:kme,jms:jme))
     case default
 
  end select cld_fraction_select
@@ -135,6 +136,7 @@
        if(allocated(qcbl_p)) deallocate(qcbl_p)
 
     case("cld_tempo")
+       if(allocated(nc_p)) deallocate(nc_p)
        if(allocated(w_p)) deallocate(w_p)
        if(allocated(qaprog_p)) deallocate(qaprog_p)
        if(allocated(rqccften_p)) deallocate(rqccften_p)
@@ -185,8 +187,8 @@
  character(len=StrKIND),pointer:: radt_cld_scheme
  character(len=StrKIND),pointer:: convection_scheme
 
- integer,pointer:: index_qaprog
- real(kind=RKIND),dimension(:,:),pointer  :: qaprog
+ integer,pointer:: index_qaprog, index_nc
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog, nc
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !-----------------------------------------------------------------------------------------------------------------
@@ -264,6 +266,7 @@
          call mpas_pool_get_array(state,'scalars',scalars) ! time level optional (use 1)
          call mpas_pool_get_array(state,'w',w) ! time level optional (use 1)
          call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+         call mpas_pool_get_dimension(state,'index_nc',index_nc)
          call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
          call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
          call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
@@ -271,11 +274,13 @@
          call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
 
          qaprog   => scalars(index_qaprog,:,:)
+         nc   => scalars(index_nc,:,:)
          do j = jts,jte
          do k = kts,kte
          do i = its,ite
             w_p(i,k,j) = w(k,i)
             qaprog_p(i,k,j) = qaprog(k,i)
+            nc_p(i,k,j) = nc(k,i)
             rqccften_p(i,k,j) = rqccften(k,i)
             rnccften_p(i,k,j) = rnccften(k,i)
             rqicften_p(i,k,j) = rqicften(k,i)
@@ -327,10 +332,12 @@
 
  character(len=StrKIND),pointer:: radt_cld_scheme
  integer,pointer:: index_qaprog, index_qv, index_qc
+ integer,pointer:: index_nc
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
  real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv, theta_m
+ real(kind=RKIND),dimension(:,:),pointer:: nc
  real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften
 
 !-----------------------------------------------------------------------------------------------------------------
@@ -353,6 +360,7 @@
       call mpas_pool_get_array(state,'theta_m',theta_m)
       call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
       call mpas_pool_get_dimension(state,'index_qc',index_qc)
+      call mpas_pool_get_dimension(state,'index_nc',index_nc)
       call mpas_pool_get_dimension(state,'index_qv',index_qv)
       call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
       call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
@@ -362,6 +370,7 @@
 
       qaprog   => scalars(index_qaprog,:,:)
       qc   => scalars(index_qc,:,:)
+      nc   => scalars(index_nc,:,:)
       qv   => scalars(index_qv,:,:)
 
       ! Update the state pointers from prognostic cloud fraction scheme tendencies
@@ -369,11 +378,12 @@
       do k = kts,kte
       do i = its,ite
          qc_p(i,k,j) = qc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn
+         nc_p(i,k,j) = nc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn / (3.14159*1000./6.*((10.e-6)**3.0))
          qv_p(i,k,j) = qv_p(i,k,j) - rqccften_p(i,k,j)*dt_dyn
          qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
-!         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
+         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
 
-         ! Update radiation pointers
+         ! Update radiation pointers (not yet sending cloud fraction to radiation)
          qcrad_p(i,k,j) = qc_p(i,k,j)
          qvrad_p(i,k,j) = qv_p(i,k,j)
          ! cldfrac_p(i,k,j) = qaprog(i,k,j)
@@ -381,12 +391,13 @@
       enddo
       enddo
 
-      ! Send updates from cloud fraction scheme to MPAS
+      ! Send updated variables from prognostic cloud fraction to MPAS
       do j = jts,jte
       do k = kts,kte
       do i = its,ite
          qv(k,i) = qv_p(i,k,j)
          qc(k,i) = qc_p(i,k,j)
+         nc(k,i) = nc_p(i,k,j)
          qaprog(k,i) = qaprog_p(i,k,j)
          rqccften(k,i) = rqccften_p(i,k,j)
          rnccften(k,i) = rnccften_p(i,k,j)
