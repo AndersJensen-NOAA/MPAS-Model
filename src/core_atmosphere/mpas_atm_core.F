@@ -161,6 +161,49 @@ module atm_core
       call mpas_log_write(' ----- done reading initial state -----')
 
 
+      ! ML transform
+      call mpas_timer_start('read_ML_transform')
+      call mpas_log_write('Reading ML transform')
+
+      call mpas_dmpar_get_time(input_start_time)
+      call MPAS_stream_mgr_read(domain % streamManager, streamID='tempo_ml_transform_in', ierr=ierr)
+      call mpas_dmpar_get_time(input_stop_time)
+      call mpas_timer_stop('read_ML_transform')
+
+      if (ierr /= MPAS_STREAM_MGR_NOERR) then
+         call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Error reading ML transform      ',                                                 messageType=MPAS_LOG_ERR)
+         call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_CRIT)
+      end if
+
+      call mpas_log_write(' Timing for read of '''//trim('tempo_ml_transform.nc')//''' stream: $r s', &
+                          realArgs=(/real(input_stop_time - input_start_time, kind=RKIND)/))
+
+      call MPAS_stream_mgr_reset_alarms(domain % streamManager, streamID='tempo_ml_transform_in', direction=MPAS_STREAM_INPUT, ierr=ierr)
+      call mpas_log_write(' ----- done reading ML transform -----')
+
+
+      ! ML neural net
+      call mpas_timer_start('read_ML_in')
+      call mpas_log_write('Reading ML neural network')
+
+      call mpas_dmpar_get_time(input_start_time)
+      call MPAS_stream_mgr_read(domain % streamManager, streamID='tempo_ml_in', ierr=ierr)
+      call mpas_dmpar_get_time(input_stop_time)
+      call mpas_timer_stop('read_ML_in')
+
+      if (ierr /= MPAS_STREAM_MGR_NOERR) then
+         call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Error reading ML neural network          ',                                        messageType=MPAS_LOG_ERR)
+         call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_CRIT)
+      end if
+
+      call mpas_log_write(' Timing for read of '''//trim('tempo_ml.nc')//''' stream: $r s', &
+                          realArgs=(/real(input_stop_time - input_start_time, kind=RKIND)/))
+
+      call MPAS_stream_mgr_reset_alarms(domain % streamManager, streamID='tempo_ml_in', direction=MPAS_STREAM_INPUT, ierr=ierr)
+      call mpas_log_write(' ----- done reading ML neural network -----')
+
       !
       ! Determine horizontal length scale used by horizontal diffusion and 3-d divergence damping
       !
@@ -376,6 +419,7 @@ module atm_core
 !     use mpas_atmphys_aquaplanet
       use mpas_atmphys_control
       use mpas_atmphys_init
+      use mpas_atmphys_init_tempo
       use mpas_atmphys_manager
 #endif
 
@@ -388,6 +432,7 @@ module atm_core
       real (kind=RKIND), intent(in) :: dt
 
       type (mpas_pool_type), pointer :: state
+      type (mpas_pool_type), pointer :: ml
       type (mpas_pool_type), pointer :: diag
       type (mpas_pool_type), pointer :: tend
       type (mpas_pool_type), pointer :: sfc_input
@@ -563,6 +608,9 @@ module atm_core
          !initialization of all physics:
          call physics_init(dminfo, clock, block % configs, mesh, diag, tend, state, 1, diag_physics, &
                            diag_physics_noahmp, atm_input, sfc_input, output_noahmp)
+
+         call mpas_pool_get_subpool(block % structs, 'ml', ml)
+         call tempo_ml_init(block % dimensions, ml)
       endif
 #endif
    
