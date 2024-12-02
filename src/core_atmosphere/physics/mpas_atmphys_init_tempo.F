@@ -17,10 +17,11 @@
  use mpas_atmphys_utilities
  use module_mp_tempo_params, only: ntb_arc,ntb_arw,ntb_art,ntb_arr,ntb_ark,tnccn_act, &
       naCCN1,naCCN0,naIN0,naIN1,nwfa_default,aero_max
-                              
+ use module_mp_tempo_ml, only: tempo_create_nn, ml_data
+
  implicit none
  private
- public:: init_tempo_aerosols_forMPAS
+ public:: init_tempo_aerosols_forMPAS, tempo_ml_init
 
 !MPAS main initialization of the TEMPO parameterization of cloud microphysics with nucleation of cloud
 !droplets based on distributions of CCNs and INs (aerosol-aware parameterization).
@@ -28,6 +29,76 @@
  
  contains
 
+
+!=================================================================================================================
+ subroutine tempo_ml_init(dims,ml)
+!=================================================================================================================
+
+!input variables:
+ type(mpas_pool_type),intent(in):: dims
+ type(mpas_pool_type),intent(in):: ml
+
+!local variables and pointers:
+ integer,pointer:: nMLfeatures,nMLnodes,nMLoutputs
+ real(kind=RKIND),dimension(:,:),pointer:: MLweights00, MLweights01
+ real(kind=RKIND),dimension(:),pointer:: MLbias00, MLbias01
+ real(kind=RKIND),dimension(:),pointer:: MLfeatureMean, MLfeatureVar
+ type(ml_data) :: tempo_ml_data
+
+!dimensions
+ call mpas_pool_get_dimension(dims,'nMLfeatures',nMLfeatures)
+ call mpas_pool_get_dimension(dims,'nMLnodes',nMLnodes)
+ call mpas_pool_get_dimension(dims,'nMLoutputs',nMLoutputs)
+
+!transform data
+ call mpas_pool_get_array(ml,'MLfeatureMean',MLfeatureMean)
+ call mpas_pool_get_array(ml,'MLfeatureVar',MLfeatureVar)
+
+!neural network data
+ call mpas_pool_get_array(ml,'MLweights00',MLweights00)
+ call mpas_pool_get_array(ml,'MLweights01',MLweights01)
+ call mpas_pool_get_array(ml,'MLbias00',MLbias00)
+ call mpas_pool_get_array(ml,'MLbias01',MLbias01)
+
+!save neural network to data type
+ tempo_ml_data%input_size = nMLfeatures
+ tempo_ml_data%output_size = nMLoutputs
+ tempo_ml_data%node_size = nMLnodes
+ if (.not.allocated(tempo_ml_data%transformMean)) then
+    allocate(tempo_ml_data%transformMean(nMLfeatures))
+ endif
+ if (.not.allocated(tempo_ml_data%transformVar)) then
+    allocate(tempo_ml_data%transformVar(nMLfeatures))
+ endif
+
+ tempo_ml_data%transformMean = MLfeatureMean
+ tempo_ml_data%transformVar = MLfeatureVar
+
+ if (.not.allocated(tempo_ml_data%weights00)) then
+    allocate(tempo_ml_data%weights00(nMLfeatures,nMLnodes))
+ endif
+
+ if (.not.allocated(tempo_ml_data%weights01)) then
+    allocate(tempo_ml_data%weights01(nMLnodes,nMLoutputs))
+ endif
+
+  if (.not.allocated(tempo_ml_data%bias00)) then
+    allocate(tempo_ml_data%bias00(nMLnodes))
+ endif
+
+ if (.not.allocated(tempo_ml_data%bias01)) then
+    allocate(tempo_ml_data%bias01(nMLoutputs))
+ endif
+
+ tempo_ml_data%weights00 = transpose(MLweights00)
+ tempo_ml_data%weights01 = transpose(MLweights01)
+ tempo_ml_data%bias00 = MLbias00
+ tempo_ml_data%bias01 = MLbias01
+
+!create neural network
+ call tempo_create_nn(tempo_ml_data_in=tempo_ml_data)
+
+ end subroutine tempo_ml_init
 
 !=================================================================================================================
  subroutine init_tempo_aerosols_forMPAS(do_restart,dminfo,mesh,state,time_lev,diag_physics)
