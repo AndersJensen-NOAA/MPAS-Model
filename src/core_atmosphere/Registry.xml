@@ -52,6 +52,14 @@
 		    description="Number of landuse categories in the input data"/>
 		<dim name="nscat"
                     description="Number of soil categories in the input data"/>
+		<dim name="nMLfeatures"        definition="7"
+                     description="Number of TEMPO ML features"/>
+		<dim name="nMLnodes"           definition="18"
+                     description="Number of TEMPO ML nodes"/>
+		<dim name="nMLnodes2"          definition="18"
+                     description="Number of TEMPO ML nodes for layer 2"/>
+		<dim name="nMLoutputs"         definition="1"
+                     description="Number of TEMPO ML outputs"/>
 #endif
         </dims>
 
@@ -598,6 +606,28 @@
 			<var name="h_oml_initial"/>
 #endif
 		</stream>
+
+		<stream name="tempo_ml_transform_in"
+                        type="input"
+                        filename_template="tempo_ml_transform.nc"
+                        input_interval="initial_only"
+                        immutable="true">
+
+                        <var name="MLfeatureMean"/>
+                        <var name="MLfeatureVar"/>
+                </stream>
+
+		<stream name="tempo_ml_in"
+                        type="input"
+                        filename_template="tempo_ml.nc"
+                        input_interval="initial_only"
+                        immutable="true">
+
+                        <var name="MLweights00"/>
+                        <var name="MLbias00"/>
+			<var name="MLweights01"/>
+                        <var name="MLbias01"/>
+                </stream>
 
 		<stream name="restart" 
                         type="input;output" 
@@ -1383,6 +1413,32 @@
 <!-- **************************************************************************************** -->
 <!-- ************************************** Variables *************************************** -->
 <!-- **************************************************************************************** -->
+       <var_struct name="ml" time_levs="1">
+
+                <var name="MLfeatureMean" type="real" dimensions="nMLfeatures" units=""
+		     description="ML feature mean values for transformation"
+		     packages="mp_tempo_in"/>
+
+		<var name="MLfeatureVar" type="real" dimensions="nMLfeatures" units=""
+		     description="ML feature variance values for transformation"
+		     packages="mp_tempo_in"/>
+
+		<var name="MLweights00" type="real" dimensions="nMLnodes nMLfeatures" units=""
+		     description="ML input layer weights"
+		     packages="mp_tempo_in"/>
+
+		<var name="MLbias00" type="real" dimensions="nMLnodes" units=""
+		     description="ML input layer bias"
+		     packages="mp_tempo_in"/>
+
+		<var name="MLweights01" type="real" dimensions="nMLoutputs nMLnodes2" units=""
+		     description="ML output layer weights"
+		     packages="mp_tempo_in"/>
+
+		<var name="MLbias01" type="real" dimensions="nMLoutputs" units=""
+		     description="ML output layer bias"
+		     packages="mp_tempo_in"/>
+       </var_struct>
 
         <var_struct name="mesh" time_levs="1">
 
