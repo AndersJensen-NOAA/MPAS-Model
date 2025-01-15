@@ -14,7 +14,6 @@
  use mpas_atmphys_constants, only: ep_2, rvord
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
- use module_mp_tempo_cldfrac, only: tempo_cldfrac_driver
  
  implicit none
  private
@@ -89,14 +88,8 @@
        if(.not.allocated(qcbl_p)) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
 
     case("cld_tempo")
-       if(.not.allocated(nc_p)  ) allocate(nc_p(ims:ime,kms:kme,jms:jme)  )
-       if(.not.allocated(w_p)) allocate(w_p(ims:ime,kms:kme,jms:jme))
        if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
-       if(.not.allocated(rqccften_p)) allocate(rqccften_p(ims:ime,kms:kme,jms:jme))
-       if(.not.allocated(rnccften_p)) allocate(rnccften_p(ims:ime,kms:kme,jms:jme))
-       if(.not.allocated(rqicften_p)) allocate(rqicften_p(ims:ime,kms:kme,jms:jme))
-       if(.not.allocated(rqacften_p)) allocate(rqacften_p(ims:ime,kms:kme,jms:jme))
-       if(.not.allocated(rthcften_p)) allocate(rthcften_p(ims:ime,kms:kme,jms:jme))
+
     case default
 
  end select cld_fraction_select
@@ -136,14 +129,8 @@
        if(allocated(qcbl_p)) deallocate(qcbl_p)
 
     case("cld_tempo")
-       if(allocated(nc_p)) deallocate(nc_p)
-       if(allocated(w_p)) deallocate(w_p)
        if(allocated(qaprog_p)) deallocate(qaprog_p)
-       if(allocated(rqccften_p)) deallocate(rqccften_p)
-       if(allocated(rnccften_p)) deallocate(rnccften_p)
-       if(allocated(rqicften_p)) deallocate(rqicften_p)
-       if(allocated(rqacften_p)) deallocate(rqacften_p)
-       if(allocated(rthcften_p)) deallocate(rthcften_p)
+
     case default
 
  end select cld_fraction_select
@@ -157,7 +144,7 @@
  end subroutine deallocate_cloudiness
 
 !=================================================================================================================
- subroutine cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
+ subroutine cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -172,7 +159,6 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
- type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -263,32 +249,39 @@
        enddo
 
     case("cld_tempo")
-         call mpas_pool_get_array(state,'scalars',scalars) ! time level optional (use 1)
-         call mpas_pool_get_array(state,'w',w) ! time level optional (use 1)
+         call mpas_pool_get_array(state,'scalars',scalars)
          call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
-         call mpas_pool_get_dimension(state,'index_nc',index_nc)
-         call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
-         call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
-         call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
-         call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
-         call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
 
          qaprog   => scalars(index_qaprog,:,:)
-         nc   => scalars(index_nc,:,:)
          do j = jts,jte
          do k = kts,kte
          do i = its,ite
-            w_p(i,k,j) = w(k,i)
             qaprog_p(i,k,j) = qaprog(k,i)
-            nc_p(i,k,j) = nc(k,i)
-            rqccften_p(i,k,j) = rqccften(k,i)
-            rnccften_p(i,k,j) = rnccften(k,i)
-            rqicften_p(i,k,j) = rqicften(k,i)
-            rqacften_p(i,k,j) = rqacften(k,i)
-            rthcften_p(i,k,j) = rthcften(k,i)
          enddo
          enddo
          enddo
+
+       if(itimestep > 0) then
+          do j = jts,jte
+          do k = kts,kte
+          do i = its,ite
+             cldfrac_p(i,k,j) = qaprog(k,i)
+          enddo
+          enddo
+          enddo
+       else
+          do j = jts,jte
+          do k = kts,kte
+          do i = its,ite
+             if	(qcrad_p(i,k,j) .gt. 1.e-6 .or. &
+                 qirad_p(i,k,j) .gt. 1.e-9 .or. &
+                 qsrad_p(i,k,j) .gt. 1.e-8 ) then
+                cldfrac_p(i,k,j) = 1._RKIND
+      	     endif
+          enddo
+          enddo
+          enddo
+       endif      
     case default
 
  end select cld_fraction_select  
@@ -313,7 +306,7 @@
  end subroutine cloudiness_from_MPAS
 
 !=================================================================================================================
- subroutine cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
+ subroutine cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -325,7 +318,6 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
- type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  integer:: i,j,k
@@ -343,7 +335,6 @@
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_array(diag_physics,'cldfrac',cldfrac)
- call mpas_pool_get_config(configs,'config_radt_cld_scheme',radt_cld_scheme)
 
  do j = jts,jte
  do k = kts,kte
@@ -353,69 +344,10 @@
  enddo
  enddo
 
- cld_fraction_select: select case (trim(radt_cld_scheme))
-
-   case("cld_tempo")
-      call mpas_pool_get_array(state,'scalars',scalars) ! time level 1
-      call mpas_pool_get_array(state,'theta_m',theta_m)
-      call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
-      call mpas_pool_get_dimension(state,'index_qc',index_qc)
-      call mpas_pool_get_dimension(state,'index_nc',index_nc)
-      call mpas_pool_get_dimension(state,'index_qv',index_qv)
-      call mpas_pool_get_array(tend_physics,'rqccften',rqccften)
-      call mpas_pool_get_array(tend_physics,'rnccften',rnccften)
-      call mpas_pool_get_array(tend_physics,'rqicften',rqicften)
-      call mpas_pool_get_array(tend_physics,'rqacften',rqacften)
-      call mpas_pool_get_array(tend_physics,'rthcften',rthcften)
-
-      qaprog   => scalars(index_qaprog,:,:)
-      qc   => scalars(index_qc,:,:)
-      nc   => scalars(index_nc,:,:)
-      qv   => scalars(index_qv,:,:)
-
-      ! Update the state pointers from prognostic cloud fraction scheme tendencies
-      do j = jts,jte
-      do k = kts,kte
-      do i = its,ite
-         qc_p(i,k,j) = qc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn
-         nc_p(i,k,j) = nc_p(i,k,j) + rqccften_p(i,k,j)*dt_dyn / (3.14159*1000./6.*((10.e-6)**3.0))
-         qv_p(i,k,j) = qv_p(i,k,j) - rqccften_p(i,k,j)*dt_dyn
-         qaprog_p(i,k,j) = qaprog_p(i,k,j) + rqacften_p(i,k,j)*dt_dyn
-         th_p(i,k,j) = th_p(i,k,j) + rthcften_p(i,k,j)*dt_dyn
-
-         ! Update radiation pointers (not yet sending cloud fraction to radiation)
-         qcrad_p(i,k,j) = qc_p(i,k,j)
-         qvrad_p(i,k,j) = qv_p(i,k,j)
-         ! cldfrac_p(i,k,j) = qaprog(i,k,j)
-      enddo
-      enddo
-      enddo
-
-      ! Send updated variables from prognostic cloud fraction to MPAS
-      do j = jts,jte
-      do k = kts,kte
-      do i = its,ite
-         qv(k,i) = qv_p(i,k,j)
-         qc(k,i) = qc_p(i,k,j)
-         nc(k,i) = nc_p(i,k,j)
-         qaprog(k,i) = qaprog_p(i,k,j)
-         rqccften(k,i) = rqccften_p(i,k,j)
-         rnccften(k,i) = rnccften_p(i,k,j)
-         rqicften(k,i) = rqicften_p(i,k,j)
-         rqacften(k,i) = rqacften_p(i,k,j)
-         rthcften(k,i) = rthcften_p(i,k,j)
-         theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
-      enddo
-      enddo
-      enddo
-   case default
-
- end select cld_fraction_select
-
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
+ subroutine driver_cloudiness(itimestep,configs,mesh,state,diag_physics,sfc_input,its,ite)
 !=================================================================================================================
 
 !input arguments:
@@ -429,7 +361,6 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
- type(mpas_pool_type),intent(inout):: tend_physics
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
@@ -445,7 +376,7 @@
  call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
 
 !copy MPAS arrays to local arrays:
- call cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,tend_physics,sfc_input,its,ite)
+ call cloudiness_from_MPAS(itimestep,configs,mesh,state,diag_physics,sfc_input,its,ite)
 
  cld_fraction_select: select case (trim(radt_cld_scheme))
     case("cld_incidence")
@@ -479,13 +410,7 @@
       call mpas_timer_stop('cal_mynncld')
 
     case("cld_tempo")
-       call mpas_timer_start('calc_tempo_cldfrac')
-       call calc_tempo_cldfrac(qa    = qaprog_p , qv    = qvrad_p , qc  = qcrad_p , qi = qirad_p , &
-                               temp  = t_p      , pres  = pres_p  , rho = rho_p   , w  = w_p ,     &
-                               qaten = rqacften_p , qcten = rqccften_p , qiten = rqicften_p ,      &
-                               thten = rthcften_p ,                                                &
-                               dt = dt_dyn , its = its , ite = ite)
-       call mpas_timer_stop('calc_tempo_cldfrac')
+       ! Call moved to microphysics, so do nothing here
 
     case default
 
@@ -500,7 +425,7 @@
  endif
 
 !copy local arrays to MPAS grid:
- call cloudiness_to_MPAS(configs,state,diag_physics,tend_physics,its,ite)
+ call cloudiness_to_MPAS(configs,state,diag_physics,its,ite)
 
 !call mpas_log_write('--- end subroutine driver_cloudiness.')
 
@@ -641,36 +566,6 @@
  enddo
 
  end subroutine calc_cldfraction
-
-!=================================================================================================================
- subroutine calc_tempo_cldfrac(qa,qv,qc,qi,temp,pres,rho,w,qaten,qcten,qiten,thten,dt,its,ite)
-!=================================================================================================================
-
-!input arguments:
- integer,intent(in):: its,ite
- real(kind=RKIND),intent(in):: dt
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qiten
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi
- real(kind=RKIND),intent(inout),dimension(ims:ime,kms:kme,jms:jme):: qa,qaten,qcten,thten
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: temp,pres,rho,w
-
-!local variables:
- integer:: i,j,k
-
- call mpas_log_write('AAJ calc_tempo_cldfrac')
- do j = jts,jte
- do i = its,ite
-
-    call tempo_cldfrac_driver(i=i, j=j, kts=kts, kte=kte, dt=dt,         &
-         temp=temp(i,:,j), pres=pres(i,:,j), rho=rho(i,:,j), w=w(i,:,j), &
-         qa=qa(i,:,j), qv=qv(i,:,j), qc=qc(i,:,j), qi=qi(i,:,j),         &
-         qaten=qaten(i,:,j), qcten=qcten(i,:,j), qiten=qiten(i,:,j),     &
-         thten=thten(i,:,j))
-
- enddo
- enddo
-
-end subroutine calc_tempo_cldfrac
 
 !=================================================================================================================
  subroutine cal_mynncld(cldfrac,qc,qi,qc_bl,qi_bl,its,ite,jts,jte,kts,kte)
