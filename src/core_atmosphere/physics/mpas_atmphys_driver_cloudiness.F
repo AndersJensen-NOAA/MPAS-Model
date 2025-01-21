@@ -249,23 +249,29 @@
        enddo
 
     case("cld_tempo")
-         call mpas_pool_get_array(state,'scalars',scalars)
-         call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
+       call mpas_pool_get_array(diag_physics,'cldfrac_bl',cldfrac_bl)
+       call mpas_pool_get_array(state,'scalars',scalars)
+       call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
 
-         qaprog   => scalars(index_qaprog,:,:)
-         do j = jts,jte
-         do k = kts,kte
-         do i = its,ite
-            qaprog_p(i,k,j) = qaprog(k,i)
-         enddo
-         enddo
-         enddo
+       qaprog   => scalars(index_qaprog,:,:)
+       do j = jts,jte
+          do k = kts,kte
+             do i = its,ite
+                qaprog_p(i,k,j) = qaprog(k,i)
+             enddo
+          enddo
+       enddo
 
        if(itimestep > 0) then
           do j = jts,jte
           do k = kts,kte
           do i = its,ite
              cldfrac_p(i,k,j) = qaprog(k,i)
+
+!             if ((cldfrac_p(i,k,j) < 0.05) .and. (cldfrac_bl(k,i) .gt. 0.001)) then
+!                cldfrac_p(i,k,j) = cldfrac_bl(k,i)
+!             endif
+
           enddo
           enddo
           enddo
