@@ -401,6 +401,7 @@
                 do i = its,ite
                    nifa_p(i,k,j) = max(0.,nifa(k,i))
                    nwfa_p(i,k,j) = max(0.,nwfa(k,i))
+
                 enddo
              enddo
           enddo
@@ -677,6 +678,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: volg,volh,zrw,zgw,zhw
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
+ real(kind=RKIND),dimension(:,:),pointer  :: qc_bl, qi_bl
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
  real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
@@ -841,6 +843,8 @@
              enddo
 
              if(config_tempo_aerosolaware) then
+                call mpas_pool_get_array(diag_physics,'qc_bl',qc_bl)
+                call mpas_pool_get_array(diag_physics,'qi_bl',qi_bl)
                 call mpas_pool_get_dimension(state,'index_nc'  ,index_nc  )
                 call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
                 call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
@@ -860,6 +864,8 @@
                    nc_p(i,k,j) = nc(k,i)
                    nifa_p(i,k,j) = nifa(k,i)
                    nwfa_p(i,k,j) = nwfa(k,i)
+                   qcbl_p(i,k,j) = qc_bl(k,i)
+                   qibl_p(i,k,j) = qi_bl(k,i)
                 enddo
                 enddo
                 enddo

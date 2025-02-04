@@ -204,6 +204,8 @@
           endif
 
           if (config_tempo_aerosolaware) then
+             if(.not.allocated(qcbl_p) ) allocate(qcbl_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(qibl_p) ) allocate(qibl_p(ims:ime,kms:kme,jms:jme))
              if(.not.allocated(nifa2d_p)) allocate(nifa2d_p(ims:ime,jms:jme))
              if(.not.allocated(nwfa2d_p)) allocate(nwfa2d_p(ims:ime,jms:jme))
              if(.not.allocated(nc_p)    ) allocate(nc_p(ims:ime,kms:kme,jms:jme)  )
@@ -352,6 +354,8 @@
           endif
 
           if (config_tempo_aerosolaware) then
+             if(allocated(qcbl_p) ) deallocate(qcbl_p )
+             if(allocated(qibl_p) ) deallocate(qibl_p )
              if(allocated(nifa2d_p)) deallocate(nifa2d_p)
              if(allocated(nwfa2d_p)) deallocate(nwfa2d_p)
              if(allocated(nc_p)    ) deallocate(nc_p    )
@@ -656,7 +660,7 @@
                      re_cloud  = recloud_p   , re_ice     = reice_p      , re_snow    = resnow_p     , &
                      has_reqc  = has_reqc    , has_reqi   = has_reqi     , has_reqs   = has_reqs     , &
                      !! ntc       = ntc_p       , muc        = muc_p                                    , &
-                     refl_10cm  = refl10cm_p   , &
+                     refl_10cm  = refl10cm_p , qcbl       = qcbl_p       , qibl       = qibl_p       , &
                      ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                      ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                      its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
