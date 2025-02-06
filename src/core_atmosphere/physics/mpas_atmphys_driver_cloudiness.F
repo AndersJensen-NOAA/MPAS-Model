@@ -168,13 +168,12 @@
  real(kind=RKIND),dimension(:),pointer:: xland
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac_bl,qi_bl,qc_bl,cldfrac_cu,qc_cu,qi_cu
- real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften,w
 
  character(len=StrKIND),pointer:: radt_cld_scheme
  character(len=StrKIND),pointer:: convection_scheme
 
- integer,pointer:: index_qaprog, index_nc
- real(kind=RKIND),dimension(:,:),pointer  :: qaprog, nc
+ integer,pointer:: index_qaprog
+ real(kind=RKIND),dimension(:,:),pointer  :: qaprog
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !-----------------------------------------------------------------------------------------------------------------
@@ -267,11 +266,6 @@
           do k = kts,kte
           do i = its,ite
              cldfrac_p(i,k,j) = qaprog(k,i)
-
-!             if ((cldfrac_p(i,k,j) < 0.05) .and. (cldfrac_bl(k,i) .gt. 0.001)) then
-!                cldfrac_p(i,k,j) = cldfrac_bl(k,i)
-!             endif
-
           enddo
           enddo
           enddo
@@ -291,7 +285,7 @@
     case default
 
  end select cld_fraction_select  
-
+ 
  if (convection_scheme=="cu_grell_freitas") then
     call mpas_pool_get_array(diag_physics,'cldfrac_cu',cldfrac_cu)
     call mpas_pool_get_array(diag_physics,'qi_cu',qi_cu)
@@ -329,14 +323,11 @@
  integer:: i,j,k
 
  character(len=StrKIND),pointer:: radt_cld_scheme
- integer,pointer:: index_qaprog, index_qv, index_qc
- integer,pointer:: index_nc
+ integer,pointer:: index_qaprog
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
  real(kind=RKIND),dimension(:,:),pointer:: cldfrac
- real(kind=RKIND),dimension(:,:),pointer:: qaprog, qc, qv, theta_m
- real(kind=RKIND),dimension(:,:),pointer:: nc
- real(kind=RKIND),dimension(:,:),pointer:: rqccften,rqicften,rqacften,rnccften,rthcften
+ real(kind=RKIND),dimension(:,:),pointer:: qaprog
 
 !-----------------------------------------------------------------------------------------------------------------
 
@@ -349,7 +340,7 @@
  enddo
  enddo
  enddo
-
+ 
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
