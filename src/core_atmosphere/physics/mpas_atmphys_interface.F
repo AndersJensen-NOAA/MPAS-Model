@@ -681,7 +681,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
- real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten
+ real(kind=RKIND),dimension(:,:),pointer  :: rncmpten,rnimpten,rnrmpten,rnifampten,rnwfampten,rthratenlw
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -889,11 +889,13 @@
              if (config_tempo_cldfrac) then
                 call mpas_pool_get_dimension(state,'index_qaprog',index_qaprog)
                 qaprog   => scalars(index_qaprog,:,:)
+                call mpas_pool_get_array(tend_physics, 'rthratenlw', rthratenlw)
 
                 do j = jts, jte
                 do k = kts, kte
                 do i = its, ite
                    qaprog_p(i,k,j) = qaprog(k,i)
+                   lwtomp_p(i,k,j) = rthratenlw(k,i)
                 enddo
                 enddo
                 enddo

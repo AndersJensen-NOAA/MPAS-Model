@@ -215,6 +215,7 @@
 
          if (config_tempo_cldfrac) then
              if(.not.allocated(qaprog_p)) allocate(qaprog_p(ims:ime,kms:kme,jms:jme))
+             if(.not.allocated(lwtomp_p)) allocate(lwtomp_p(ims:ime,kms:kme,jms:jme))
          endif
 
        case("mp_nssl2m")
@@ -369,6 +370,7 @@
 
           if (config_tempo_cldfrac) then
              if(allocated(qaprog_p)) deallocate(qaprog_p)
+             if(allocated(lwtomp_p)) deallocate(lwtomp_p)
           endif
 
        case("mp_nssl2m")
@@ -592,7 +594,7 @@
                      th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                      qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                      qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
-                     qa        = qaprog_p    , &
+                     qa        = qaprog_p    , lwin       = lwtomp_p, &
                      !! ng        = ng_p        , qb         = volg_p                                   , &
                      !! nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                      !! nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -615,7 +617,7 @@
                         th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                         qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                         qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
-                        qa        = qaprog_p    , &
+                        qa        = qaprog_p    , lwin       = lwtomp_p, &
                         !! ng        = ng_p        , qb         = volg_p                                   , &
                         nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                         nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -637,7 +639,7 @@
                         th        = th_p        , qv         = qv_p         , qc         = qc_p         , &
                         qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                         qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
-                        qa        = qaprog_p    , &
+                        qa        = qaprog_p    , lwin       = lwtomp_p, &
                         ng        = ng_p        , qb         = volg_p                                   , &
                         !! nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                         !! nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
@@ -663,7 +665,7 @@
                      qr        = qr_p        , qi         = qi_p         , qs         = qs_p         , &
                      qg        = qg_p        , ni         = ni_p         , nr         = nr_p         , &
                      ng        = ng_p        , qb         = volg_p                                   , &
-                     qa        = qaprog_p    , &
+                     qa        = qaprog_p    , lwin       = lwtomp_p, &
                      nc        = nc_p        , nwfa       = nwfa_p       , nifa       = nifa_p       , &
                      nwfa2d    = nwfa2d_p    , nifa2d     = nifa2d_p                                 , &
                      pii       = pi_p        , p          = pres_p       , dz         = dz_p         , &
