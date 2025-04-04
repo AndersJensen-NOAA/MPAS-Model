@@ -973,14 +973,15 @@
              enddo
           enddo
        endif
-       if(f_nc .and. f_nifa .and. f_nwfa) then
-          call mpas_pool_get_array(tend_physics,'rncblten'  ,rncblten  )
+!       if(f_nc .and. f_nifa .and. f_nwfa) then
+       if(f_nifa .and. f_nwfa) then
+!          call mpas_pool_get_array(tend_physics,'rncblten'  ,rncblten  )
           call mpas_pool_get_array(tend_physics,'rnifablten',rnifablten)
           call mpas_pool_get_array(tend_physics,'rnwfablten',rnwfablten)
           do j = jts,jte
              do k = kts,kte
                 do i = its,ite
-                   rncblten(k,i)   = rncblten_p(i,k,j)
+!                   rncblten(k,i)   = rncblten_p(i,k,j)
                    rnifablten(k,i) = rnifablten_p(i,k,j)
                    rnwfablten(k,i) = rnwfablten_p(i,k,j)
                 enddo
@@ -1074,14 +1075,15 @@
              enddo
           enddo
        endif
-       if(f_nc .and. f_nifa .and. f_nwfa) then
-          call mpas_pool_get_array(tend_physics,'rncblten'  ,rncblten  )
+!       if(f_nc .and. f_nifa .and. f_nwfa) then
+       if(f_nifa .and. f_nwfa) then
+!          call mpas_pool_get_array(tend_physics,'rncblten'  ,rncblten  )
           call mpas_pool_get_array(tend_physics,'rnifablten',rnifablten)
           call mpas_pool_get_array(tend_physics,'rnwfablten',rnwfablten)
           do j = jts,jte
              do k = kts,kte
                 do i = its,ite
-                   rncblten(k,i)   = rncblten_p(i,k,j)
+!                   rncblten(k,i)   = rncblten_p(i,k,j)
                    rnifablten(k,i) = rnifablten_p(i,k,j)
                    rnwfablten(k,i) = rnwfablten_p(i,k,j)
                 enddo

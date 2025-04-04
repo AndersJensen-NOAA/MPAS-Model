@@ -1070,9 +1070,9 @@ module atm_time_integration
                   if (index_qh > 0) then
                      scalars_driving(index_qh,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'qh', rk_timestep(rk_step) )
                   end if
-                  if (index_nc > 0) then
-                     scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', rk_timestep(rk_step) )
-                  end if
+!                  if (index_nc > 0) then
+!                     scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', rk_timestep(rk_step) )
+!                  end if
                   if (index_nr > 0) then
                      scalars_driving(index_nr,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nr', rk_timestep(rk_step) )
                   end if
@@ -1276,9 +1276,9 @@ module atm_time_integration
                if (index_qh > 0) then
                   scalars_driving(index_qh,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'qh', rk_timestep(rk_step) )
                end if
-               if (index_nc > 0) then
-                  scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', rk_timestep(rk_step) )
-               end if
+!               if (index_nc > 0) then
+!                  scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', rk_timestep(rk_step) )
+!               end if
                if (index_nr > 0) then
                   scalars_driving(index_nr,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nr', rk_timestep(rk_step) )
                end if
@@ -1475,9 +1475,9 @@ module atm_time_integration
          if (index_qh > 0) then
             scalars_driving(index_qh,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'qh', dt)
          end if
-         if (index_nc > 0) then
-            scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', dt)
-         end if
+!         if (index_nc > 0) then
+!            scalars_driving(index_nc,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nc', dt)
+!         end if
          if (index_nr > 0) then
             scalars_driving(index_nr,1:nVertLevels,1:nCells+1) = mpas_atm_get_bdy_state( clock, block, nVertLevels, nCells, 'nr', dt )
          end if

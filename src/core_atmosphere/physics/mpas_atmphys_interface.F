@@ -435,20 +435,21 @@
           enddo
        endif
        !initializes nc_p, nifa_p, and nwfa_p when running the option "mp_thompson_aerosols":
-       if(f_nc .and. f_nifa .and. f_nwfa) then
-          nullify(nc)
+!       if(f_nc .and. f_nifa .and. f_nwfa) then
+       if(f_nifa .and. f_nwfa) then
+!          nullify(nc)
           nullify(nifa)
           nullify(nwfa)
-          call mpas_pool_get_dimension(state,'index_nc',index_nc)
+!          call mpas_pool_get_dimension(state,'index_nc',index_nc)
           call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
           call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
-          nc   => scalars(index_nc,:,:)
+!          nc   => scalars(index_nc,:,:)
           nifa => scalars(index_nifa,:,:)
           nwfa => scalars(index_nwfa,:,:)
           do j = jts,jte
              do k = kts,kte
                 do i = its,ite
-                   nc_p(i,k,j)   = max(0.,nc(k,i))
+!                   nc_p(i,k,j)   = max(0.,nc(k,i))
                    nifa_p(i,k,j) = max(0.,nifa(k,i))
                    nwfa_p(i,k,j) = max(0.,nwfa(k,i))
                 enddo
@@ -481,20 +482,21 @@
           enddo
        endif
        !initializes nc_p, nifa_p, and nwfa_p when running the option "mp_thompson_aerosols":
+!       if(f_nc .and. f_nifa .and. f_nwfa) then
        if(f_nc .and. f_nifa .and. f_nwfa) then
-          nullify(nc)
+!          nullify(nc)
           nullify(nifa)
           nullify(nwfa)
-          call mpas_pool_get_dimension(state,'index_nc',index_nc)
+!          call mpas_pool_get_dimension(state,'index_nc',index_nc)
           call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
           call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
-          nc   => scalars(index_nc,:,:)
+!          nc   => scalars(index_nc,:,:)
           nifa => scalars(index_nifa,:,:)
           nwfa => scalars(index_nwfa,:,:)
           do j = jts,jte
              do k = kts,kte
                 do i = its,ite
-                   nc_p(i,k,j)   = max(0.,nc(k,i))
+!                   nc_p(i,k,j)   = max(0.,nc(k,i))
                    nifa_p(i,k,j) = max(0.,nifa(k,i))
                    nwfa_p(i,k,j) = max(0.,nwfa(k,i))
                 enddo
