@@ -519,6 +519,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
  logical,pointer:: config_tempo_aerosolaware,config_tempo_hailaware
+ logical,pointer:: config_tempo_ml_nc
  character(len=StrKIND),pointer:: nssl_moments
 
  integer :: tempo_options
@@ -543,6 +544,7 @@
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_tempo_hailaware',config_tempo_hailaware)
  call mpas_pool_get_config(configs,'config_tempo_aerosolaware',config_tempo_aerosolaware)
+ call mpas_pool_get_config(configs,'config_tempo_ml_nc',config_tempo_ml_nc) 
  call mpas_pool_get_config(configs,'config_nssl_moments',nssl_moments)
  call mpas_pool_get_array(diag_physics,'do_diag_dbz',do_diag_dbz)
 
@@ -608,7 +610,8 @@
                      refl_10cm  = refl10cm_p , frainnc    = frainnc_p                                , &
                      ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                      ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                     its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                     its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
+                     ml_nc = config_tempo_ml_nc                                                        &
                      )
              case(1)
                 if (config_tempo_aerosolaware) then
@@ -631,7 +634,8 @@
                         qcbl      = qcbl_p      , cldfrac    = cldfrac_p                                , &
                         ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                         ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                        its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                        its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
+                        ml_nc = config_tempo_ml_nc                                                        &                        
                         )
                 elseif (config_tempo_hailaware) then
                    call tempo_3d_to_1d_driver( &
@@ -653,7 +657,8 @@
                         !! qcbl      = qcbl_p      , cldfrac    = cldfrac_p                                , &
                         ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                         ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                        its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                        its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
+                        ml_nc = config_tempo_ml_nc                                                        &                        
                         )
                 else
                    call physics_error_fatal('driver_microphysics(): TEMPO called with invalid options -- case 1')
@@ -678,7 +683,8 @@
                      qcbl      = qcbl_p      , cldfrac    = cldfrac_p                                , &
                      ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                      ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
-                     its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
+                     its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
+                     ml_nc = config_tempo_ml_nc                                                        &
                      )
              case default
                 call physics_error_fatal('driver_microphysics(): TEMPO called with invalid options -- case default')
