@@ -54,8 +54,12 @@ type(mpas_pool_type),intent(in):: configs
     return
  endif
 
- if(config_tempo_ml_nc .or. config_tempo_ml_nr) then
-    call mpas_log_write('--- TEMPO ML for nc and nr prediction not yet working... These flags will be ignored')
+ if(config_tempo_ml_nc) then
+    call mpas_log_write('--- Using TEMPO ML for nc prediction')
+ endif
+
+ if(config_tempo_ml_nr) then
+    call mpas_log_write('--- TEMPO ML for nr prediction not yet working... This flag will be ignored')
  endif
 
  if(config_tempo_ml_nc_pbl) then
