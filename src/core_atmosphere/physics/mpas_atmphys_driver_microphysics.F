@@ -624,7 +624,7 @@
                      ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                      ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                      its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
-                     ml_nc = config_tempo_ml_nc
+                     ml_nc = config_tempo_ml_nc                                                        &
                      )
              case(1)
                 if (config_tempo_aerosolaware) then
@@ -648,7 +648,7 @@
                         ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                         ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                         its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
-                        ml_nc = config_tempo_ml_nc
+                        ml_nc = config_tempo_ml_nc                                                        &
                         )
                 elseif (config_tempo_hailaware) then
                    call tempo_3d_to_1d_driver( &
@@ -671,7 +671,7 @@
                         ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                         ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                         its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
-                        ml_nc = config_tempo_ml_nc
+                        ml_nc = config_tempo_ml_nc                                                        &
                         )
                 else
                    call physics_error_fatal('driver_microphysics(): TEMPO called with invalid options -- case 1')
@@ -699,7 +699,7 @@
                      ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde           , &
                      ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme           , &
                      its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte           , &
-                     ml_nc = config_tempo_ml_nc
+                     ml_nc = config_tempo_ml_nc                                                        &
                      )
              case default
                 call physics_error_fatal('driver_microphysics(): TEMPO called with invalid options -- case default')
