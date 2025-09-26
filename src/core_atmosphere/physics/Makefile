@@ -65,7 +65,7 @@ core_physics_mmm: core_physics_init
 	(cd physics_mmm; $(MAKE) -f Makefile.mpas all)
 
 core_microphysics: core_physics_init core_physics_mmm
-	(cd physics_noaa/TEMPO; cp ./drivers/mpas/module_mp_tempo.F90 .; $(MAKE) all COREDEF="$(COREDEF)")
+	(cd physics_noaa/TEMPO; cp ./drivers/mpas/module_mp_tempo.F90 .; cp ../../physics_mmm/mp_radar.F90 .; $(MAKE) all COREDEF="$(COREDEF)")
 
 core_SMOKE: core_physics_init
 	(cd physics_noaa/SMOKE; cp ./MPAS/Makefile .; cp ./MPAS/mpas_smoke_wrapper.F90 .; $(MAKE) all)
