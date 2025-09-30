@@ -1080,7 +1080,7 @@ module atm_time_integration
       call physics_get_tend( block, mesh, state, diag, tend, tend_physics, &
                              block % configs, rk_step, dynamics_substep, &
                              tend_ru_physics, tend_rtheta_physics, tend_rho_physics, &
-                             exchange_halo_group )
+                             exchange_halo_group, real(itimestep)*dt )
       call mpas_timer_stop('physics_get_tend')
 #else
 #ifndef MPAS_CAM_DYCORE

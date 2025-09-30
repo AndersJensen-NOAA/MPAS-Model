@@ -174,6 +174,10 @@ module mpas_atm_halos
          call mpas_dmpar_exch_group_add_field(domain, 'physics:blten', 'rublten', timeLevel=1, haloLayers=(/1,2/))
          call mpas_dmpar_exch_group_add_field(domain, 'physics:blten', 'rvblten', timeLevel=1, haloLayers=(/1,2/))
 
+         call mpas_dmpar_exch_group_create(domain, 'physics:slten')
+         call mpas_dmpar_exch_group_add_field(domain, 'physics:slten', 'ruslten', timeLevel=1, haloLayers=(/1,2/))
+         call mpas_dmpar_exch_group_add_field(domain, 'physics:slten', 'rvslten', timeLevel=1, haloLayers=(/1,2/))
+
          call mpas_dmpar_exch_group_create(domain, 'physics:cuten')
          call mpas_dmpar_exch_group_add_field(domain, 'physics:cuten', 'rucuten', timeLevel=1, haloLayers=(/1,2/))
          call mpas_dmpar_exch_group_add_field(domain, 'physics:cuten', 'rvcuten', timeLevel=1, haloLayers=(/1,2/))
@@ -314,6 +318,11 @@ module mpas_atm_halos
          call mpas_halo_exch_group_add_field(domain, 'physics:blten', 'rvblten', timeLevel=1, haloLayers=(/1,2/))
          call mpas_halo_exch_group_complete(domain, 'physics:blten')
 
+         call mpas_halo_exch_group_create(domain, 'physics:slten')
+         call mpas_halo_exch_group_add_field(domain, 'physics:slten', 'ruslten', timeLevel=1, haloLayers=(/1,2/))
+         call mpas_halo_exch_group_add_field(domain, 'physics:slten', 'rvslten', timeLevel=1, haloLayers=(/1,2/))
+         call mpas_halo_exch_group_complete(domain, 'physics:slten')
+
          call mpas_halo_exch_group_create(domain, 'physics:cuten')
          call mpas_halo_exch_group_add_field(domain, 'physics:cuten', 'rucuten', timeLevel=1, haloLayers=(/1,2/))
          call mpas_halo_exch_group_add_field(domain, 'physics:cuten', 'rvcuten', timeLevel=1, haloLayers=(/1,2/))
@@ -412,6 +421,7 @@ module mpas_atm_halos
          ! Destroy halo exchange groups used by physics
          !
          call mpas_dmpar_exch_group_destroy(domain, 'physics:blten')
+         call mpas_dmpar_exch_group_destroy(domain, 'physics:slten')
          call mpas_dmpar_exch_group_destroy(domain, 'physics:cuten')
          call mpas_dmpar_exch_group_destroy(domain, 'physics:sub3d_cuten')
 #endif
@@ -449,6 +459,7 @@ module mpas_atm_halos
          ! Destroy halo exchange groups used by physics
          !
          call mpas_halo_exch_group_destroy(domain, 'physics:blten')
+         call mpas_halo_exch_group_destroy(domain, 'physics:slten')
          call mpas_halo_exch_group_destroy(domain, 'physics:cuten')
          !srf
          call mpas_halo_exch_group_destroy(domain, 'physics:sub3d_cuten')

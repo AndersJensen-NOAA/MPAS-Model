@@ -63,7 +63,7 @@
  
 !=================================================================================================================
  subroutine physics_get_tend(block,mesh,state,diag,tend,tend_physics,configs,rk_step,dynamics_substep, &
-                             tend_ru_physics,tend_rtheta_physics,tend_rho_physics,exchange_halo_group)
+                             tend_ru_physics,tend_rtheta_physics,tend_rho_physics,exchange_halo_group, xtime)
 !=================================================================================================================
 
 !input variables:
@@ -73,6 +73,8 @@
  type(mpas_pool_type),intent(in):: configs
  integer,intent(in):: rk_step
  integer,intent(in):: dynamics_substep
+ real(kind=RKIND), intent(in) :: xtime
+
  procedure(halo_exchange_routine):: exchange_halo_group
 
 !inout variables:
@@ -105,15 +107,18 @@
  real(kind=RKIND),dimension(:,:),pointer:: rncblten,rniblten,rnifablten,rnwfablten
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten, &
                                            rqrcuten,rqicuten,rqscuten, &
-                                           rucuten,rvcuten
+                                           rucuten,rvcuten, &
+                                           ruslten,rvslten
  real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw                                    
  
  real(kind=RKIND),dimension(:,:),pointer:: tend_u_phys !nick
  real(kind=RKIND),dimension(:,:,:),pointer:: tend_scalars
 
- real(kind=RKIND),dimension(:,:),pointer:: rublten_Edge,rucuten_Edge
+ real(kind=RKIND),dimension(:,:),pointer:: rublten_Edge,rucuten_Edge,ruslten_Edge
 
  real(kind=RKIND),dimension(:,:),allocatable:: tend_th
+ real(kind=RKIND), dimension(:), pointer :: xCell, yCell
+ real(kind=RKIND), dimension(:,:), pointer :: zgrid
 
 !=================================================================================================================
 
@@ -121,6 +126,10 @@
  call mpas_pool_get_dimension(mesh,'nEdges',nEdges)
  call mpas_pool_get_dimension(mesh,'nCellsSolve',nCellsSolve)
  call mpas_pool_get_dimension(mesh,'nEdgesSolve',nEdgesSolve)
+
+ call mpas_pool_get_array(mesh, 'xCell', xCell)
+ call mpas_pool_get_array(mesh, 'yCell', yCell)
+ call mpas_pool_get_array(mesh, 'zgrid', zgrid)
 
  call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
  call mpas_pool_get_config(configs,'config_microp_scheme'    ,microp_scheme    )
@@ -147,6 +156,8 @@
 
  call mpas_pool_get_array(tend_physics,'rublten',rublten)
  call mpas_pool_get_array(tend_physics,'rvblten',rvblten)
+ call mpas_pool_get_array(tend_physics,'ruslten',ruslten)
+ call mpas_pool_get_array(tend_physics,'rvslten',rvslten)
  call mpas_pool_get_array(tend_physics,'rthblten',rthblten)
  call mpas_pool_get_array(tend_physics,'rqvblten',rqvblten)
  call mpas_pool_get_array(tend_physics,'rqcblten',rqcblten)
@@ -157,6 +168,7 @@
  call mpas_pool_get_array(tend_physics,'rnifablten',rnifablten)
  call mpas_pool_get_array(tend_physics,'rnwfablten',rnwfablten)
  call mpas_pool_get_array(tend_physics,'rublten_Edge',rublten_Edge)
+ call mpas_pool_get_array(tend_physics,'ruslten_Edge',ruslten_Edge)
 
  call mpas_pool_get_array(tend_physics,'rucuten',rucuten)
  call mpas_pool_get_array(tend_physics,'rvcuten',rvcuten)
@@ -189,6 +201,8 @@
 !associated here to avoid triggering run-time. checks when calling physics_get_tend_work:
  if(.not. associated(rucuten) ) allocate(rucuten(0,0) )
  if(.not. associated(rvcuten) ) allocate(rvcuten(0,0) )
+ if(.not. associated(ruslten) ) allocate(ruslten(0,0) )
+ if(.not. associated(rvslten) ) allocate(rvslten(0,0) )
  if(.not. associated(rthcuten)) allocate(rthcuten(0,0))
  if(.not. associated(rqvcuten)) allocate(rqvcuten(0,0))
  if(.not. associated(rqccuten)) allocate(rqccuten(0,0))
@@ -219,6 +233,7 @@
               rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
               rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
               tend_th,tend_rtheta_physics,tend_scalars,tend_ru_physics,tend_u_phys,      &
+              ruslten, rvslten, ruslten_Edge, xCell, yCell, zgrid, xtime, &
               exchange_halo_group)
 
 !clean up any pointers that were allocated with zero size before the call to physics_get_tend_work:
@@ -233,6 +248,8 @@
 
  if(size(rublten) == 0 ) deallocate(rublten )
  if(size(rvblten) == 0 ) deallocate(rvblten )
+ if(size(ruslten) == 0 ) deallocate(ruslten )
+ if(size(rvslten) == 0 ) deallocate(rvslten )
  if(size(rthblten) == 0) deallocate(rthblten)
  if(size(rqvblten) == 0) deallocate(rqvblten)
  if(size(rqcblten) == 0) deallocate(rqcblten)
@@ -259,6 +276,7 @@
                     rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
                     rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
                     tend_th,tend_theta,tend_scalars,tend_u,tend_u_phys,                        &
+                    ruslten, rvslten, ruslten_Edge, xCell, yCell, zgrid, xtime, &
                     exchange_halo_group)
 !=================================================================================================================
 
@@ -279,11 +297,14 @@
  integer,intent(in):: rk_step,dynamics_substep
  integer,intent(in):: index_qv,index_qc,index_qr,index_qi,index_qs
  integer,intent(in):: index_nc,index_ni,index_nifa,index_nwfa
+ real(kind=RKIND),intent(in):: xtime
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: mass
  real(kind=RKIND),intent(in),dimension(nVertLevels,nEdges+1):: mass_edge
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: theta_m
  real(kind=RKIND),intent(in),dimension(num_scalars,nVertLevels,nCells+1):: scalars
+ real(kind=RKIND),intent(in),dimension(nCells+1):: xCell, yCell
+ real(kind=RKIND),intent(in),dimension(nVertLevels+1,nCells+1):: zgrid
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rublten
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rvblten
@@ -318,13 +339,57 @@
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: tend_th
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: tend_theta
 
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: ruslten, rvslten
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nEdges+1):: ruslten_Edge
+
  real(kind=RKIND),intent(inout),dimension(num_scalars,nVertLevels,nCells+1):: tend_scalars
 
 !local variables:
  integer:: i,k
  real(kind=RKIND):: coeff
+ real(kind=RKIND):: xmax, xmin, ymax, ymin, alpha_sl, gamma_sl, xc_sl, xr_sl, zr_sl, xterm, zterm
 
 !-----------------------------------------------------------------------------------------------------------------
+
+ if(rk_step == 1 .and. dynamics_substep == 1) then
+    call mpas_dmpar_max_real(block % domain % dminfo, maxval(xCell(:)), xmax)
+    call mpas_dmpar_min_real(block % domain % dminfo, minval(xCell(:)), xmin)
+    call mpas_dmpar_max_real(block % domain % dminfo, maxval(yCell(:)), ymax)
+    call mpas_dmpar_min_real(block % domain % dminfo, minval(yCell(:)), ymin)
+
+    xc_sl = xmax * 0.5
+    xr_sl = 10000.
+    zr_sl = 10000.
+    alpha_sl = 0.1
+    gamma_sl = 1.0
+
+    if ((xtime > 3300.) .and. (xtime < 3600.)) gamma_sl = 1.-((xtime-3300.)/300.)
+    if (xtime >= 3600.) gamma_sl = 0.
+
+    write(*,*) 'xtime: ', xtime
+    write(*,*) '   Forced convergence with weighting factor: ', gamma_sl
+
+    do i = 1, nCellsSolve
+       xterm = 0.
+       if (abs(xCell(i)-xc_sl) < xr_sl) then
+          xterm = cos(3.14159*(xCell(i)-xc_sl)/(2.*xr_sl))
+       endif
+       do k = 1, nVertLevels
+          zterm = (cosh(2.5*zgrid(k,i)/zr_sl))**(-2)
+          ruslten(k,i) = alpha_sl * gamma_sl * xterm * zterm
+       enddo
+    enddo
+
+    call exchange_halo_group(block%domain,'physics:slten')
+    call tend_toEdges(block,mesh,ruslten,rvslten,ruslten_Edge)
+
+    tend_u_phys(1:nVertLevels,1:nEdges) = tend_u_phys(1:nVertLevels,1:nEdges) + ruslten_Edge(1:nVertLevels,1:nEdges)
+ endif
+ do i = 1, nEdgesSolve
+    do k = 1, nVertLevels
+       tend_u(k,i)=tend_u(k,i)+ruslten_Edge(k,i)*mass_edge(k,i)
+    enddo
+ enddo
 
 !add coupled tendencies due to PBL processes:
  if(pbl_scheme .ne. 'off') then

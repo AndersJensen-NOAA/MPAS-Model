@@ -4130,6 +4130,14 @@
                      description="tendency of meridional wind due to pbl processes"
                      packages="bl_mynn_in;bl_mynnedmf_in;bl_ysu_in;bl_myj_in"/>
 
+                <var name="ruslten" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1} s^{-1}"
+                     description="tendency of zonal wind due to foreced convergence"
+                     packages="mp_tempo_in"/>
+
+                <var name="rvslten" type="real" dimensions="nVertLevels nCells Time" units="m s^{-1} s^{-1}"
+                     description="tendency of meridional wind due to forced convergence"
+                     packages="mp_tempo_in"/>
+
                 <var name="rthblten" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
                      description="tendency of potential temperature due to pbl processes"
                      packages="bl_mynn_in;bl_mynnedmf_in;bl_ysu_in;bl_myj_in"/>
@@ -4168,6 +4176,7 @@
 
 	        <!-- MGD should we add packages to the field below? -->
 	        <var name="rublten_Edge" type="real"     dimensions="nVertLevels nEdges Time"/>
+	        <var name="ruslten_Edge" type="real"     dimensions="nVertLevels nEdges Time"/>
 
 
                 <!-- ================================================================================================== -->

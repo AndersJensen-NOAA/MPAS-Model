@@ -1551,6 +1551,9 @@ module init_atm_cases
       integer           :: ierr
       integer           :: iunit
 
+      character (len=StrKIND), pointer :: config_specified_zeta_levels
+      real (kind=RKIND), dimension(:), pointer :: specified_zw
+      
       real psfc, thsfc, qvsfc, yb
       real (kind=RKIND), dimension(nVertLevels) :: tsnd, qvsnd, usnd, vsnd
       logical :: debug = .true.
@@ -1573,6 +1576,17 @@ module init_atm_cases
       real (kind=RKIND) :: case5_us  = 15.
       real (kind=RKIND) :: case5_zts = 5000.
 
+
+      integer :: nseed
+      integer,allocatable :: seed(:)
+      real (kind=RKIND) :: randnum
+      
+      call random_seed(size=nseed)
+      allocate(seed(nseed))
+      seed = 86
+      call random_seed(put=seed)
+      deallocate(seed)
+      
 ! END Weisman-Klemp Thermodynamic and shear parameters
 
       call mpas_pool_get_array(mesh, 'xCell', xCell)
@@ -1604,6 +1618,7 @@ module init_atm_cases
       call mpas_pool_get_config(configs, 'config_delt',delt)
       call mpas_pool_get_config(configs, 'config_umv',umv)
       call mpas_pool_get_config(configs, 'config_vmv',vmv)
+      call mpas_pool_get_config(configs, 'config_specified_zeta_levels', config_specified_zeta_levels)
       
       multi_pert = config_multi_pert
       bptpert    = delt 
@@ -1718,8 +1733,10 @@ module init_atm_cases
 
 ! LJW_HACK
 
-      if ( config_read_z_grid == 0 .and. .not. config_use_sounding_z_levels ) then
 
+!AAJ      if ( config_read_z_grid == 0 .and. .not. config_use_sounding_z_levels ) then
+      if (len_trim(config_specified_zeta_levels) <= 0)then
+            
 !       parameters for internal hybrid coordinate and vertical stretching
 
         str = 1.0
@@ -1755,27 +1772,52 @@ module init_atm_cases
 
       else ! read in from input_grid_z - need to harden this code to check for wrong number of levels
 
-          call mpas_new_unit(iunit)
-          IF ( .not. config_use_sounding_z_levels ) THEN
-            open(unit=iunit, file='input_grid_z', form='formatted', status='old', iostat=ierr)
-          ELSE
-            open(unit=iunit, file=config_input_sounding_name, form='formatted', status='old', iostat=ierr)
-            ! dummy read first line
-            read(unit=iunit, fmt=*, iostat=ierr) zw(1)
-          ENDIF
-          
-          do k=1,nz
-            read(unit=iunit, fmt=*, iostat=ierr) zw(k)
-            ah(k) = 1.
-            call mpas_log_write(' k, zw, ah = $i $r $r ', intArgs=(/k/), realArgs=(/zw(k),ah(k)/))
-          end do
+!!         if (len_trim(config_specified_zeta_levels) > 0) then
 
-          call mpas_release_unit(iunit)
+         call mpas_log_write('Setting up vertical grid using levels from '''//trim(config_specified_zeta_levels)//'''')
 
-          zt = zw(nz) ! needed below
-        
+         if (read_text_array(dminfo, trim(config_specified_zeta_levels), specified_zw) /= 0) then
+            call mpas_log_write('Failed to read vertical levels from '''//trim(config_specified_zeta_levels)//'''', &
+                                 messageType=MPAS_LOG_CRIT)
+         end if
+
+         if (size(specified_zw) /= nz) then
+            call mpas_log_write('In the namelist.init_atmosphere file, config_nvertlevels = $i, but ', intArgs=(/nz1/), &
+                                 messageType=MPAS_LOG_ERR)
+            call mpas_log_write('but '''//trim(config_specified_zeta_levels)//''' has $i values.', intArgs=(/size(specified_zw)/), &
+                                 messageType=MPAS_LOG_ERR)
+            call mpas_log_write(''''//trim(config_specified_zeta_levels)//''' must contain nVertLevels+1 ($i) values.', intArgs=(/nz/), &
+                                 messageType=MPAS_LOG_CRIT)
+         end if
+
+         ah(:) = 1.
+         zw(:) = specified_zw(:)
+         zt = zw(nz)
+
+         deallocate(specified_zw)
       endif
+          ! call mpas_new_unit(iunit)
+          ! IF ( .not. config_use_sounding_z_levels ) THEN
+          !   open(unit=iunit, file='input_grid_z', form='formatted', status='old', iostat=ierr)
+          ! ELSE
+          !   open(unit=iunit, file=config_input_sounding_name, form='formatted', status='old', iostat=ierr)
+          !   ! dummy read first line
+          !   read(unit=iunit, fmt=*, iostat=ierr) zw(1)
+          ! ENDIF
+          
+          ! do k=1,nz
+          !   read(unit=iunit, fmt=*, iostat=ierr) zw(k)
+          !   ah(k) = 1.
+          !   call mpas_log_write(' k, zw, ah = $i $r $r ', intArgs=(/k/), realArgs=(/zw(k),ah(k)/))
+          ! end do
 
+          ! call mpas_release_unit(iunit)
+
+          ! zt = zw(nz) ! needed below
+        
+      ! endif
+
+      
       do k=1,nz1
          dzw (k) = zw(k+1)-zw(k)
          rdzw(k) = 1./dzw(k)
@@ -1928,6 +1970,16 @@ module init_atm_cases
          do k=1,nz1
             usnd(k) = usnd(k) - umv
             vsnd(k) = vsnd(k) - vmv
+
+            !AAJ
+            ztemp = .5*(zgrid(k,1)+zgrid(k+1,1))
+            if (ztemp <= 5000.) then
+               usnd(k) = (ztemp - 5000.) / (5000./12.)
+            else
+               usnd(k) = 0.
+            endif
+            
+            vsnd(k) = 0.
          end do
 
          do i=2, nEdges
@@ -2114,9 +2166,15 @@ module init_atm_cases
           do k = 1,nz1
             ztemp = .5*(zgrid(k+1,i)+zgrid(k,i))
             rad   = sqrt((xloc/bhrad)**2+(yloc/bhrad)**2+((ztemp-zcent)/bvrad)**2)
-            if (rad .lt. 1)  then
-              thi(k,i) = thi(k,i) + bptpert*cos(.5*pii*rad)**2
-            end if
+!            if (rad .lt. 1)  then
+            !            thi(k,i) = thi(k,i) + bptpert*cos(.5*pii*rad)**2
+            if (abs(xCell(i) - xmid) < 20000.) then
+               call random_number(randnum)
+               randnum = 0.05*((2.*randnum)-1.)
+               thi(k,i) = thi(k,i) + randnum
+            endif
+!               write(*,*) 'AAJ', k, i, bptpert*cos(.5*pii*rad)**2, thi(k,i)
+!            end if
             t (k,i) = thi(k,i)*(1.+1.61*scalars(index_qv,k,i))
           end do
         end do
