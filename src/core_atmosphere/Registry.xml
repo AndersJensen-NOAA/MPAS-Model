@@ -1803,10 +1803,6 @@
                              description="Hail reflectivity moment"
                              packages="nssl3m_in"/>
 
-                        <var name="nc" array_group="number" units="nb kg^{-1}"
-                             description="Cloud water number concentration"
-                             packages="mp_thompson_aers_in;tempo_aerosolaware_in"/>
-
                         <var name="nifa" array_group="number" units="nb kg^{-1}"
                              description="Ice-friendly aerosol number concentration"
                              packages="mp_thompson_aers_in;tempo_aerosolaware_in"/>
@@ -2196,7 +2192,7 @@
 
                         <var name="tend_nc" name_in_code="nc" array_group="number" units="nb m^{-3} s^{-1}"
                              description="Tendency of cloud water number concentration multiplied by dry air density divided by d(zeta)/dz"
-                             packages="mp_thompson_aers_in;tempo_aerosolaware_in"/>
+                             packages="mp_thompson_aers_in"/>
 
                         <var name="tend_nifa" name_in_code="nifa" array_group="number" units="nb m^{-3} s^{-1}"
                              description="Tendency of ice-friendly aerosol number concentration multiplied by dry air density divided by d(zeta)/dz"
@@ -2293,7 +2289,7 @@
                         <var name="lbc_volh" name_in_code="volh" array_group="volume" packages="mp_nssl2m_in" units="m^{3} s^{-1}"
                              description="Lateral boundary tendency of hail particle volume"/>
 
-                        <var name="lbc_nc" name_in_code="nc" array_group="number" packages="mp_thompson_aers_in;tempo_aerosolaware_in"
+                        <var name="lbc_nc" name_in_code="nc" array_group="number" packages="mp_thompson_aers_in"
                              units="m^{-3} s^{-1}"
                              description="Lateral boundary tendency of cloud water number concentration"/>
 
@@ -2741,6 +2737,10 @@
                 <!-- ================================================================================================== -->
                 <!-- ... PARAMETERIZATION OF CLOUD MICROPHYSICS:                                                        -->
                 <!-- ================================================================================================== -->
+
+                <var name="nc" type="real" dimensions="nVertLevels nCells Time" units="nb kg^{-1}"
+                     description="Cloud water number concentration"
+                     packages="tempo_aerosolaware_in"/>
 
 		<var name="refl10cm" type="real" dimensions="nVertLevels nCells Time" units="dBZ"
                      description="10 cm radar reflectivity"

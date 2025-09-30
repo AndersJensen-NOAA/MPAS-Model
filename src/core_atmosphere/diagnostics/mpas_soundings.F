@@ -243,11 +243,11 @@ module mpas_soundings
         integer, pointer :: index_qc, index_qr, index_qi, index_qs, index_qg
         integer, pointer :: index_nc, index_nr, index_ni, index_ng, index_volg
         real (kind=RKIND), dimension(:,:), pointer :: pressure_base, pressure_p, uReconstructZonal, uReconstructMeridional, zgrid, &
-                                                      theta_m, exner, rre_cloud, qc_bl, cldfrac
+                                                      theta_m, exner, rre_cloud, qc_bl, cldfrac, nc
         real (kind=RKIND), dimension(:), pointer :: swupt, swdnb, rainnc, snownc, graupelnc
         real (kind=RKIND), dimension(:,:,:), pointer :: scalars
         real (kind=RKIND) :: tmpc, tdpc, dir, spd, rh, log_rh, qvs, pres
-        real (kind=RKIND) :: qv, qc, nc, qr, nr, qi, ni, qs, qg, ng, volg, re, qcbl, cf, swu, swd, rn, sn, gr
+        real (kind=RKIND) :: qv, qc, nc2, qr, nr, qi, ni, qs, qg, ng, volg, re, qcbl, cf, swu, swd, rn, sn, gr
         type (MPAS_time_type) :: now
         character(len=StrKIND) :: nowString
         integer :: yyyy, mm, dd, h, m, s
@@ -273,6 +273,7 @@ module mpas_soundings
             call MPAS_pool_get_dimension(state, 'index_qg', index_qg)
             call MPAS_pool_get_dimension(state, 'index_ng', index_ng)
             call MPAS_pool_get_dimension(state, 'index_volg', index_volg)
+            call MPAS_pool_get_array(diag_physics, 'nc', nc)
             call MPAS_pool_get_array(diag_physics, 'rre_cloud', rre_cloud)
             call MPAS_pool_get_array(diag_physics, 'qc_bl', qc_bl)
             call MPAS_pool_get_array(diag_physics, 'cldfrac', cldfrac)
@@ -329,7 +330,7 @@ module mpas_soundings
                         pres = pressure_base(k,stationCells(iStn)) + pressure_p(k,stationCells(iStn))
                         qv = scalars(index_qv,k,stationCells(iStn))
                         qc = scalars(index_qc,k,stationCells(iStn))
-                        nc = scalars(index_nc,k,stationCells(iStn))
+                        nc2 = nc(k,stationCells(iStn))
                         qr = scalars(index_qr,k,stationCells(iStn))
                         nr = scalars(index_nr,k,stationCells(iStn))
                         qi = scalars(index_qi,k,stationCells(iStn))
@@ -371,7 +372,7 @@ module mpas_soundings
                                     spd, &
                                     qv, &
                                     qc, &
-                                    nc, &
+                                    nc2, &
                                     qr, &
                                     nr, &
                                     qi, &

@@ -902,10 +902,10 @@
              endif
 
              if(config_tempo_aerosolaware) then
-                call mpas_pool_get_dimension(state,'index_nc'  ,index_nc  )
+!                call mpas_pool_get_dimension(state,'index_nc'  ,index_nc  )
                 call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
                 call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
-                nc   => scalars(index_nc,:,:)
+                call mpas_pool_get_array(diag_physics, 'nc', nc)
                 nifa => scalars(index_nifa,:,:)
                 nwfa => scalars(index_nwfa,:,:)
 
@@ -1408,15 +1408,15 @@
              enddo
 
              if(config_tempo_aerosolaware) then
-                call mpas_pool_get_dimension(state,'index_nc'  ,index_nc  )
+!!                call mpas_pool_get_dimension(state,'index_nc'  ,index_nc  )
                 call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
                 call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
-                nc   => scalars(index_nc,:,:)
                 nifa => scalars(index_nifa,:,:)
                 nwfa => scalars(index_nwfa,:,:)
 
                 call mpas_pool_get_array(diag_physics,'nifa2d',nifa2d)
                 call mpas_pool_get_array(diag_physics,'nwfa2d',nwfa2d)
+                call mpas_pool_get_array(diag_physics,'nc',nc)
                 do j = jts,jte
                 do i = its,ite
                    nifa2d(i) = nifa2d_p(i,j)
