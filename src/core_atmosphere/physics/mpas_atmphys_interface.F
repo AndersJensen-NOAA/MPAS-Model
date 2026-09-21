@@ -1275,7 +1275,7 @@ end subroutine pre_microphysics
  real(kind=RKIND),dimension(:,:),pointer  :: qal, qai, precipfrac
  real(kind=RKIND),dimension(:,:),pointer  :: ns,ng,nh,nccn
  real(kind=RKIND),dimension(:,:),pointer  :: volg,volh,zrw,zgw,zhw
- real(kind=RKIND),dimension(:)  ,pointer  :: max_hail_diameter_sfc, max_hail_diameter_column
+ real(kind=RKIND),dimension(:)  ,pointer  :: max_hail_diameter_sfc, max_hail_diameter_column, refl10cm_compref_max, compref
  real(kind=RKIND),dimension(:,:),pointer  :: rainprod,evapprod,refl10cm
  real(kind=RKIND),dimension(:,:),pointer  :: re_cloud,re_ice,re_snow
  real(kind=RKIND),dimension(:,:),pointer  :: rthmpten,rqvmpten,rqcmpten,rqrmpten,rqimpten,rqsmpten,rqgmpten
@@ -1446,6 +1446,9 @@ end subroutine pre_microphysics
              ni   => scalars(index_ni,:,:)
              nr   => scalars(index_nr,:,:)
 
+             call mpas_pool_get_array(diag_physics,'refl10cm_max',compref )
+             call mpas_pool_get_array(diag_physics,'refl10cm_compref_max',refl10cm_compref_max )
+
              do j = jts,jte
              do k = kts,kte
              do i = its,ite
@@ -1454,6 +1457,12 @@ end subroutine pre_microphysics
              enddo
              enddo
              enddo
+
+             do j = jts,jte
+             do i = its,ite
+                refl10cm_compref_max(i) = max(refl10cm_compref_max(i),compref(i))
+             end do
+             end do
 
              mp3_select: select case(trim(mp_scheme))
                 case("mp_thompson_aerosols")
@@ -1517,6 +1526,14 @@ end subroutine pre_microphysics
        enddo
        enddo
        enddo
+
+       call mpas_pool_get_array(diag_physics,'refl10cm_compref_max',refl10cm_compref_max )
+       call mpas_pool_get_array(diag_physics,'refl10cm_max',compref )
+       do j = jts,jte
+       do i = its,ite
+          refl10cm_compref_max(i) = max(refl10cm_compref_max(i),compref(i))
+       end do
+       end do
 
        mp2a_select: select case(trim(mp_scheme))
           case("mp_tempo")
