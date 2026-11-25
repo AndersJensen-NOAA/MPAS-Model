@@ -303,6 +303,8 @@
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
       qal_p, qai_p, precipfrac_p
+ integer,dimension(:,:),allocatable:: &
+      landmask_p        !TEMPO land mask (1 for land; otherwise water)
 
 !... arrays located at w (vertical velocity) points, or at interface between layers:
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
