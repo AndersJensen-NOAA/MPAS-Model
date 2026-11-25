@@ -389,7 +389,9 @@
     case("mp_tempo")
        call tempo_init(aerosolaware_flag=config_tempo_aerosolaware, &
             hailaware_flag=config_tempo_hailaware, &
-            hailhyperaware_flag=config_tempo_hailhyperaware, tempo_cfgs=tempo_cfgs)
+            hailhyperaware_flag=config_tempo_hailhyperaware, tempo_cfgs=tempo_cfgs, &
+            errflg=errflg, errmsg=errmsg)
+       if (errflg /= 0) call physics_error_fatal('--- tempo_init: '//trim(errmsg))
 
        if(config_tempo_aerosolaware) then
           call init_tempo_aerosols_forMPAS(do_restart,dminfo,mesh,state,time_lev,diag_physics)
