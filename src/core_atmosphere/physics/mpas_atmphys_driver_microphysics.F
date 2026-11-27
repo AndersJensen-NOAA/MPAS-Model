@@ -25,6 +25,8 @@
  use module_mp_tempo_cfgs,only: ty_tempo_cfgs
  use module_mp_tempo_driver,only: tempo_init, tempo_run, &
       ty_tempo_driver_diags, tempo_aerosol_surface_emissions
+ use module_mp_tempo_params,only: tempo_wp => wp, tempo_nwfa_min => nwfa_default
+ use module_mp_tempo_utils,only: calc_cloud_number, calc_ice_number
 
  implicit none
  private
@@ -339,6 +341,8 @@
  subroutine init_microphysics(dminfo,configs,mesh,state,time_lev,sfc_input,diag_physics)
 !=================================================================================================================
 
+ use module_mp_tempo_params,only: tempo_rdry => rdry, tempo_rv => rv
+
 !input arguments:
  type(dm_info),intent(in):: dminfo
  type(mpas_pool_type),intent(in):: configs
@@ -387,6 +391,10 @@
        end select microp2_select
 
     case("mp_tempo")
+       ! TEMPO computes the air density from its own gas constants.
+       ! Use those of MPAS instead, so that this density equals the MPAS dry-air density.
+       tempo_rdry = R_d
+       tempo_rv   = R_v
        call tempo_init(aerosolaware_flag=config_tempo_aerosolaware, &
             hailaware_flag=config_tempo_hailaware, &
             hailhyperaware_flag=config_tempo_hailhyperaware, tempo_cfgs=tempo_cfgs, &
@@ -433,10 +441,15 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
+ character(len=StrKIND),pointer:: convection_scheme
+ logical,pointer:: config_do_restart
+ real(kind=RKIND),dimension(:,:),pointer:: rqccuten
 
 !local variables and arrays:
  integer:: istep
+ integer:: itimestep_tempo
  integer:: i,j,k
+ real(kind=RKIND):: dnc
 
 !land-ocean mask passed to TEMPO (1=land, 2=ocean), used for the constant cloud droplet number
 !concentration when the aerosol-aware option is off:
@@ -490,6 +503,47 @@
        call mpas_timer_stop('mp_kessler')
 
     case ("mp_tempo")
+       call mpas_pool_get_config(configs,'config_do_restart',config_do_restart)
+
+!Aerosol-aware TEMPO: cloud water without droplets (nc = 0) gets the fewest, largest drops TEMPO allows and rains
+!out quickly. Give new cloud water a droplet number from TEMPO's calc_cloud_number, taken from nwfa,
+!which is kept at or above nwfa_default as in TEMPO's activation; new cloud ice gets calc_ice_number:
+       if(allocated(nc_p) .and. allocated(nwfa_p)) then
+          !cold start: initial cloud water and cloud ice:
+          if(itimestep == 1 .and. .not. config_do_restart) then
+             do j = jts,jte
+             do k = kts,kte
+             do i = its,ite
+                if(qc_p(i,k,j) > 0._RKIND .and. nc_p(i,k,j) <= 0._RKIND) then
+                   dnc = calc_cloud_number(real(qc_p(i,k,j),tempo_wp),real(nwfa_p(i,k,j)*rho_p(i,k,j),tempo_wp))
+                   nc_p(i,k,j)   = dnc
+                   nwfa_p(i,k,j) = max(tempo_nwfa_min,nwfa_p(i,k,j)-dnc)
+                endif
+                if(qi_p(i,k,j) > 0._RKIND .and. ni_p(i,k,j) <= 0._RKIND) &
+                   ni_p(i,k,j) = calc_ice_number(real(qi_p(i,k,j),tempo_wp),real(th_p(i,k,j)*pi_p(i,k,j),tempo_wp))
+             enddo
+             enddo
+             enddo
+          endif
+          !cloud water detrained by convection since the last call (positive rqccuten only):
+          call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+          if(trim(convection_scheme) /= 'off') then
+             call mpas_pool_get_array(tend_physics,'rqccuten',rqccuten)
+             do j = jts,jte
+             do k = kts,kte
+             do i = its,ite
+                if(rqccuten(k,i) > 0._RKIND) then
+                   dnc = dt_dyn * calc_cloud_number(real(rqccuten(k,i),tempo_wp), &
+                                                    real(nwfa_p(i,k,j)*rho_p(i,k,j),tempo_wp))
+                   nc_p(i,k,j)   = nc_p(i,k,j) + dnc
+                   nwfa_p(i,k,j) = max(tempo_nwfa_min,nwfa_p(i,k,j)-dnc)
+                endif
+             enddo
+             enddo
+             enddo
+          endif
+       endif
+
        ! surface emissions are added once per model time-step, before the n_microp substeps,
        ! so the full model time-step dt_dyn is used (not dt_microp = dt_dyn/n_microp)
        if (allocated(nwfa_p) .and. allocated(nwfa2d_p)) then
@@ -506,10 +560,16 @@
        enddo
        enddo
 
+       ! TEMPO takes itimestep = 1 as a cold start and initializes fields.
+       ! MPAS also starts a restart run at itimestep = 1, so pass 2 there
+       ! to avoid initializing again.
+       itimestep_tempo = itimestep
+       if(config_do_restart .and. itimestep == 1) itimestep_tempo = 2
+
        istep = 1
        do while (istep .le. n_microp)
          call tempo_run( tempo_cfgs=tempo_cfgs, &
-            dt      = dt_microp  , itimestep  = itimestep , &
+            dt      = dt_microp  , itimestep  = itimestep_tempo , &
             th      = th_p       , qv         = qv_p      , qc      = qc_p   , &                 
             qr      = qr_p       , qi         = qi_p      , qs     = qs_p    , &                 
             qg      = qg_p       , ni         = ni_p      , nr     = nr_p    , &                 
@@ -531,10 +591,12 @@
             graupelncv_p(i,j) = graupelncv_p(i,j) + tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
             graupelnc_p(i,j) = graupelnc_p(i,j) + tempo_driver_diags%graupel_liquid_equiv_precip(i,j)      
             rainncv_p(i,j) = rainncv_p(i,j) + tempo_driver_diags%rain_precip(i,j) + &
+               tempo_driver_diags%cloud_precip(i,j) + &
                tempo_driver_diags%ice_liquid_equiv_precip(i,j)  + &
                tempo_driver_diags%snow_liquid_equiv_precip(i,j) + &
                tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
             rainnc_p(i,j) = rainnc_p(i,j) + tempo_driver_diags%rain_precip(i,j) + &
+               tempo_driver_diags%cloud_precip(i,j) + &
                tempo_driver_diags%ice_liquid_equiv_precip(i,j)  + &
                tempo_driver_diags%snow_liquid_equiv_precip(i,j) + &
                tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
